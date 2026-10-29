@@ -1,0 +1,160 @@
+/* 20-viewers.css — 内置查看器：Markdown 文档阅读器、访达式文件管理器、搜索排序与缩略图视图。
+   由原 static/style.css 按功能连续切分而来，link 顺序即层叠顺序，勿随意调换。 */
+
+/* ===================== 桌面内文档查看器（Markdown 渲染） ===================== */
+.doc-win { min-width: 420px; }
+.win .body.doc-body { display: flex; flex-direction: column; gap: 14px; padding: 18px 22px; }
+.doc-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.doc-path { font-size: 12px; color: var(--muted); }
+.doc-content { line-height: 1.75; font-size: 14px; overflow-wrap: break-word; }
+.doc-content > :first-child { margin-top: 0; }
+.doc-content h1, .doc-content h2, .doc-content h3, .doc-content h4, .doc-content h5, .doc-content h6 { margin: 18px 0 8px; line-height: 1.4; font-weight: 600; }
+.doc-content h1 { font-size: 21px; }
+.doc-content h2 { font-size: 18px; }
+.doc-content h3 { font-size: 16px; }
+.doc-content h4 { font-size: 14px; }
+.doc-content h5, .doc-content h6 { font-size: 13px; color: var(--muted); }
+.doc-content p { margin: 8px 0; }
+.doc-content pre { background: rgba(28, 42, 70, .07); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; overflow: auto; }
+.doc-content pre code { background: none; padding: 0; font-size: 12.5px; line-height: 1.6; }
+.doc-content code { background: rgba(28, 42, 70, .07); border-radius: 4px; padding: 1px 6px; font-size: 12.5px; }
+.doc-content table { border-collapse: collapse; margin: 10px 0; width: 100%; }
+.doc-content th, .doc-content td { border: 1px solid var(--border); padding: 6px 10px; font-size: 13px; text-align: left; }
+.doc-content th { background: var(--glass); }
+.doc-content blockquote { margin: 8px 0; padding: 4px 14px; border-left: 3px solid var(--accent); color: var(--muted); background: var(--glass); border-radius: 0 10px 10px 0; }
+.doc-content ul, .doc-content ol { margin: 8px 0; padding-left: 24px; }
+.doc-content li { margin: 3px 0; }
+.doc-content hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.doc-content a { color: #2f6bd8; text-decoration: none; border-bottom: 1px dashed rgba(47, 107, 216, .45); }
+.doc-content a:hover { color: #1c4fb8; }
+.doc-content del { opacity: .65; }
+
+/* 项目窗口内的 README 摘要卡片 */
+.win .body .doc-summary { border: 1px solid var(--border); border-radius: 14px; background: var(--glass); padding: 12px 16px; margin-bottom: 18px; }
+.doc-summary-hd { font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: .02em; }
+.doc-summary-bd { max-height: 138px; overflow: hidden; font-size: 13px; line-height: 1.65; }
+.doc-summary-bd > :first-child { margin-top: 0; }
+.doc-summary-bd p { margin: 6px 0; }
+.doc-summary-bd pre, .doc-summary-bd table { display: none; }
+.doc-more { color: var(--muted); font-size: 12px; }
+.doc-summary-btn { margin-top: 10px; }
+.doc-content pre.doc-plain { margin: 0; }
+
+/* ===================== 桌面内文件管理器（访达式） ===================== */
+.fm-win { min-width: 560px; }
+.win .body.fm-body { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+.fm-toolbar { display: flex; align-items: center; gap: 8px; }
+.fm-tbtn {
+  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--glass); color: var(--text); cursor: pointer; font-size: 15px; line-height: 1;
+  flex: none; transition: background .12s, border-color .12s;
+}
+.fm-tbtn:hover:not(:disabled) { background: rgba(var(--acc-rgb), .25); border-color: rgba(var(--acc-rgb), .55); }
+.fm-tbtn:disabled { opacity: .35; cursor: default; }
+.fm-crumbs { flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; min-width: 0; }
+.fm-crumb {
+  border: none; background: none; color: var(--muted); cursor: pointer; padding: 3px 6px;
+  border-radius: 6px; font-size: 12.5px; max-width: 180px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.fm-crumb:hover { background: var(--glass); color: var(--text); }
+.fm-crumb:last-child { color: var(--text); }
+.fm-sep { color: var(--muted); font-size: 12px; }
+.fm-main { flex: 1; display: flex; gap: 10px; min-height: 0; }
+.fm-tree {
+  width: 190px; flex: none; overflow: auto; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--glass); padding: 6px;
+}
+.fm-tnode {
+  display: flex; align-items: center; gap: 5px; padding: 4px 6px; border-radius: 6px;
+  cursor: pointer; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fm-tnode:hover { background: var(--glass-strong); }
+.fm-tnode.sel { background: rgba(var(--acc-rgb), .82); color: #fff; }
+.fm-tw { width: 12px; text-align: center; color: var(--muted); font-size: 10px; flex: none; }
+.fm-list {
+  flex: 1; overflow: auto; border: 1px solid var(--border); border-radius: 10px;
+  background: rgba(255, 255, 255, .28); padding: 6px;
+}
+.fm-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+.fm-row:hover { background: var(--glass); }
+.fm-row.sel { background: rgba(var(--acc-rgb), .24); }
+.fm-ric { width: 20px; text-align: center; flex: none; }
+.fm-rname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm-rsize { width: 76px; text-align: right; color: var(--muted); font-size: 12px; flex: none; }
+.fm-rtime { width: 112px; text-align: right; color: var(--muted); font-size: 12px; flex: none; }
+.fm-empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 13px; }
+.fm-status { font-size: 12px; color: var(--muted); }
+.fm-imgview { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.fm-imgbar { display: flex; align-items: center; gap: 10px; }
+.fm-imgname { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm-imgwrap {
+  flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto;
+  background: rgba(28, 42, 70, .10); border-radius: 10px; min-height: 0;
+}
+.fm-imgwrap img { max-width: 100%; max-height: 100%; border-radius: 6px; }
+
+/* ===================== 文档查看器：目录侧栏 / 内联图片 / 代码高亮 ===================== */
+.win .body.doc-body { gap: 12px; }
+.doc-split { flex: 1; display: flex; gap: 14px; min-height: 0; }
+.doc-toc {
+  width: 170px; flex: none; overflow-y: auto; overflow-x: hidden;
+  border-right: 1px solid var(--border); padding-right: 10px; font-size: 13px;
+}
+.doc-toc-hd {
+  font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 6px;
+}
+.doc-toc-item {
+  display: block; padding: 3px 8px; border-radius: 6px; color: var(--text);
+  text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.doc-toc-item:hover { background: var(--glass-strong); }
+.doc-toc-item.lv1 { font-weight: 600; }
+.doc-toc-item.lv2 { padding-left: 18px; }
+.doc-toc-item.lv3 { padding-left: 30px; }
+.doc-toc-item.lv4 { padding-left: 42px; }
+.doc-toc-item.lv5, .doc-toc-item.lv6 { padding-left: 54px; font-size: 12px; color: var(--muted); }
+.doc-content { flex: 1; overflow-y: auto; min-width: 0; }
+.doc-content img.doc-img {
+  display: block; max-width: 100%; margin: 10px 0; border-radius: 8px;
+  border: 1px solid var(--border); background: rgba(255, 255, 255, .6);
+}
+/* 代码块与行内代码高亮（浅色光珊玻璃下的配色） */
+.doc-content pre.code-block {
+  background: rgba(28, 42, 70, .07); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.doc-content pre.code-block code { background: none; padding: 0; font-size: 12.5px; line-height: 1.6; }
+.tok-comment { color: #8a94a8; font-style: italic; }
+.tok-string  { color: #1a7f37; }
+.tok-number  { color: #b5530e; }
+.tok-keyword { color: #2563eb; font-weight: 600; }
+.tok-tag     { color: #b3309a; }
+
+/* ===================== 文件管理器：搜索 / 排序 / 缩略图视图 ===================== */
+.fm-search {
+  height: 30px; width: 158px; flex: none; border-radius: 8px; border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .55); padding: 0 10px; font-size: 13px; color: var(--text); outline: none;
+}
+.fm-search:focus { border-color: var(--accent); }
+.fm-tbtn#fmSort, .fm-tbtn#fmView { font-size: 14px; line-height: 1; padding: 0 10px; }
+.fm-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px; padding: 6px 2px; width: 100%;
+}
+.fm-card {
+  display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border-radius: 10px;
+  cursor: pointer; border: 1px solid transparent;
+}
+.fm-card:hover { background: var(--glass); border-color: var(--border); }
+.fm-card.sel { background: rgba(var(--acc-rgb), .24); border-color: rgba(var(--acc-rgb), .5); }
+.fm-thumbbox {
+  width: 100%; height: 84px; display: flex; align-items: center; justify-content: center;
+  background: var(--glass); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 6px;
+}
+.fm-thumb { max-width: 100%; max-height: 84px; object-fit: contain; border-radius: 4px; }
+.fm-thumb-ic { font-size: 34px; line-height: 84px; }
+.fm-cname {
+  font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
+}

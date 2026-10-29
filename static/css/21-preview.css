@@ -1,0 +1,75 @@
+/* 21-preview.css — 预览与分屏：iframe 预览窗口、刷新反馈动画、贴边分屏预览框。
+   由原 static/style.css 按功能连续切分而来，link 顺序即层叠顺序，勿随意调换。 */
+
+/* ===================== 桌面内预览窗口（iframe 内嵌 localhost 开发服务） ===================== */
+.preview-win { min-width: 420px; }
+.win .body.preview-body { flex-direction: column; gap: 10px; padding: 10px; }
+.preview-bar {
+  display: flex; align-items: center; gap: 8px; flex: none;
+  padding: 7px 10px; border-radius: 10px;
+  background: rgba(255, 255, 255, .5); border: 1px solid var(--border);
+}
+.preview-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex: none;
+  background: #c2c9d6; box-shadow: 0 0 0 3px rgba(194, 201, 214, .22);
+}
+.preview-dot.on { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, .22); }
+.preview-url {
+  flex: 1; min-width: 0; height: 28px; border-radius: 8px; border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .66); padding: 0 10px; font-size: 12.5px; color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; outline: none;
+}
+.preview-frame-wrap { position: relative; flex: 1; min-height: 0; }
+.preview-frame {
+  width: 100%; height: 100%; border: none; border-radius: 10px; background: #fff;
+  border: 1px solid var(--border); box-shadow: inset 0 1px 3px rgba(28, 42, 70, .06);
+}
+.preview-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(238, 244, 255, .72); backdrop-filter: blur(6px); border-radius: 10px;
+}
+.preview-overlay[hidden] { display: none; }
+.pv-card {
+  text-align: center; padding: 28px 34px; border-radius: 18px; max-width: 360px;
+  background: rgba(255, 255, 255, .82); border: 1px solid rgba(255, 255, 255, .85);
+  box-shadow: 0 16px 44px rgba(var(--acc-rgb), .18);
+}
+.pv-ico { font-size: 34px; }
+.pv-title { font-size: 17px; font-weight: 700; margin-top: 8px; color: var(--text); }
+.pv-sub { font-size: 13px; color: var(--muted); line-height: 1.7; margin: 10px 0 18px; }
+.pv-card .btn.act-run { width: 100%; justify-content: center; }
+
+/* ===== 桌面右键「刷新」的 Windows 风格反馈动画 ===== */
+/* 点击刷新时图标区快速重绘一次：整体淡出回弹 + 每个图标轻微缩放回弹，给明确的视觉反馈。 */
+@keyframes desk-refresh-flicker {
+  0%   { opacity: 1; }
+  28%  { opacity: 0.28; }   /* 短暂淡出，模拟桌面重绘 */
+  62%  { opacity: 0.9; }
+  100% { opacity: 1; }
+}
+@keyframes desk-icon-repop {
+  0%   { transform: scale(1); }
+  28%  { transform: scale(0.92); }
+  62%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+#icons.refreshing        { animation: desk-refresh-flicker .36s ease; }
+#icons.refreshing .desk-icon,
+#icons.refreshing .folder-item,
+#icons.refreshing .trash-item { animation: desk-icon-repop .36s ease; }
+/* 尊重系统“减少动态效果”偏好：关闭动画，仍保留 toast 文字反馈 */
+@media (prefers-reduced-motion: reduce) {
+  #icons.refreshing,
+  #icons.refreshing .desk-icon,
+  #icons.refreshing .folder-item,
+  #icons.refreshing .trash-item { animation: none; }
+}
+
+/* ===== 窗口贴边分屏预览框 ===== */
+.snap-preview {
+  position: fixed; z-index: 998; display: none; pointer-events: none;
+  border-radius: 14px; background: rgba(var(--acc-rgb), .18);
+  border: 2px solid rgba(var(--acc-rgb), .6);
+  box-shadow: 0 16px 40px rgba(var(--sh-rgb), .25);
+}
+.snap-preview.show { display: block; }

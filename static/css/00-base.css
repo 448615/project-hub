@@ -1,0 +1,140 @@
+/* 00-base.css — 基础层：CSS 变量、三套主题配色、自定义光标、全局重置与滚动条。最先加载。
+   由原 static/style.css 按功能连续切分而来，link 顺序即层叠顺序，勿随意调换。 */
+
+:root {
+  --bg0: #e8eef8;
+  --bg1: #f4f7fd;
+  --glass: rgba(255, 255, 255, .40);
+  --glass-strong: rgba(255, 255, 255, .56);
+  --border: rgba(var(--bd-rgb), .26);
+  --text: #1e2a3f;
+  --muted: #5d6c85;
+  --accent: #5B8CFF;
+  --accent2: #67E8F9;
+  --green: #22b573;
+  --radius: 18px;
+  --shadow: 0 10px 30px rgba(var(--sh-rgb), .18);
+  /* 背景纱罩：设置→桌面背景明暗 会覆盖这两个变量（内联优先级最高） */
+  --shade-a: rgba(255, 255, 255, .34);
+  --shade-b: rgba(255, 255, 255, .10);
+  /* 窗口开关动画时长：设置→动画速度 覆盖 */
+  --anim-dur: .22s;
+  /* 主题变量（三套主题共用）：RGB 三元组供 rgba() 使用 */
+  --acc-rgb: 91, 140, 255;      /* 角色蓝 */
+  --acc2-rgb: 103, 232, 249;    /* 角色青 */
+  --sh-rgb: 40, 70, 130;        /* 投影蓝 */
+  --bd-rgb: 96, 125, 175;       /* 边框蓝灰 */
+  /* 玻璃质感：设置→外观 的「窗口透明度 / 玻璃模糊 / 玻璃提亮」（1~100 百分比）
+     由 020-settings-core.js 换算成 rgba alpha / px / brightness 后内联覆盖以下三项，
+     所以这里的取值只是「未设置时的兜底」。--glass-a 是底档透明度，顶档由它乘系数得到。 */
+  --glass-a: .46;
+  --glass-blur: 26px;
+  --glass-lift: 1;
+  /* 大面玻璃的「色 + 系数」：渐变本身写在 .win / #taskbar 的规则里，
+     这样 --glass-a 在窗口元素上求值，设置里改透明度才能立刻生效。 */
+  --win-tint: 255, 255, 255;  --win-tint2: 255, 255, 255;  --win-k: 1.3;
+  --bar-tint: 255, 255, 255;  --bar-tint2: 255, 255, 255;  --bar-k1: 1.04;  --bar-k2: .65;
+  --win-bg-solid: linear-gradient(165deg, rgba(255, 255, 255, .96), rgba(250, 252, 255, .92));
+  --bar-bg: linear-gradient(90deg, rgba(var(--acc-rgb), .12), rgba(var(--acc2-rgb), .09));
+
+  --glass-panel: rgba(255, 255, 255, .66);
+  --paper: rgba(248, 251, 255, .96);
+  --paper-text: #1e2a3f;
+}
+
+/* ===================== 三套主题 =====================
+   data-theme 由个性化窗口切换并持久化（hub-theme）
+   默认（无 data-theme）= 角色蓝；dark = 暗黑玻璃；pink = 樱花粉 */
+body[data-theme="dark"] {
+  --acc-rgb: 120, 160, 255;   --acc2-rgb: 80, 210, 240;
+  --sh-rgb: 0, 0, 10;         --bd-rgb: 130, 160, 210;
+  --text: #e8edf7;  --muted: #9aa7bf;
+  --accent: #78a0ff;  --accent2: #50d2f0;
+  --glass-a: .76;
+  --win-tint: 18, 26, 46;   --win-tint2: 11, 17, 34;   --win-k: 1.05;
+  --bar-tint: 16, 24, 44;   --bar-tint2: 9, 15, 30;    --bar-k1: .97;  --bar-k2: .89;
+  --win-bg-solid: linear-gradient(165deg, rgba(22, 31, 54, .97), rgba(14, 20, 38, .96));
+  --bar-bg: linear-gradient(90deg, rgba(120, 160, 255, .18), rgba(80, 210, 240, .10));
+
+  --glass-panel: rgba(22, 32, 58, .66);
+  --paper: rgba(24, 34, 58, .94);
+  --paper-text: #e4ebf8;
+  --glass: rgba(22, 32, 58, .55);
+  --glass-strong: rgba(28, 40, 70, .70);
+  --border: rgba(130, 160, 210, .28);
+  --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  --shade-a: rgba(10, 16, 34, .30);  --shade-b: rgba(10, 16, 34, .55);
+}
+body[data-theme="dark"] body::before { filter: blur(var(--wallpaper-blur, 0px)) brightness(.72) saturate(.9); }
+body[data-theme="dark"] .desk-icon .nm, body[data-theme="dark"] .folder-item .fi-nm,
+body[data-theme="dark"] .trash-item .fi-nm, body[data-theme="dark"] #clock { color: #e8edf7; text-shadow: 0 1px 3px rgba(0, 0, 0, .7); }
+body[data-theme="pink"] {
+  --acc-rgb: 255, 133, 173;   --acc2-rgb: 255, 190, 214;
+  --sh-rgb: 200, 110, 150;    --bd-rgb: 226, 160, 190;
+  --text: #4a3340;  --muted: #8a6b78;
+  --accent: #ff85ad;  --accent2: #ffbed6;
+  --glass-a: .68;
+  --win-tint: 255, 246, 250; --win-tint2: 255, 238, 245; --win-k: 1.18;
+  --bar-tint: 255, 246, 250; --bar-tint2: 255, 238, 245; --bar-k1: .91;  --bar-k2: .70;
+  --win-bg-solid: linear-gradient(165deg, rgba(255, 252, 254, .97), rgba(255, 247, 251, .95));
+  --bar-bg: linear-gradient(90deg, rgba(255, 133, 173, .14), rgba(255, 190, 214, .10));
+
+  --glass-panel: rgba(255, 248, 251, .68);
+  --paper: rgba(255, 252, 254, .97);
+  --paper-text: #4a3340;
+  --glass: rgba(255, 248, 251, .52);
+  --glass-strong: rgba(255, 248, 251, .68);
+  --border: rgba(226, 160, 190, .30);
+  --shadow: 0 10px 30px rgba(200, 110, 150, .20);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+
+/* ===================== 自定义光标（箭头+角色，网页内生效） =====================
+   系统级“角色干饭”方案管桌面和其他应用；但部分内嵌浏览器不跟随系统光标，
+   所以在网页内直接用 CSS 光标：普通=箭头+干饭脸，链接/按钮=手型+干饭脸。 */
+body, body * {
+  cursor: url('/static/cursor-normal.png') 1 1, auto !important;
+}
+a, button, .btn, .task-btn, .desk-icon, .win .bar .x button {
+  cursor: url('/static/cursor-link.png') 10 30, pointer !important;
+}
+.win .bar {
+  cursor: url('/static/cursor-move.png') 16 16, move !important;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--text);
+  background: var(--bg0);   /* 兜底浅色：背景图没加载完前先显示浅色，避免闪深 */
+  min-height: 100%;
+  overflow: hidden;          /* 桌面不需要整页滚动 */
+}
+
+/* 背景插画层：用固定伪元素承载图片，而不是 background-attachment:fixed。
+   原因：Chrome 在 Windows 下对 background-attachment:fixed 会做降质模糊，
+   全屏铺开尤其明显，所以改用伪元素固定层，避免把高清图变糊。
+   背景图为 2730x1536 高清超分版，cover 等比铺满整个视口不失真。 */
+body::before {
+  content: "";                 /* 伪元素必须有 content 才会显示，这里留空 */
+  position: fixed;             /* 固定定位：滚动时背景不动，等同“壁纸”效果 */
+  inset: 0;                    /* 上右下左都贴边，铺满整个视口 */
+  z-index: -2;                 /* 压到最底层（内容 z-index 更高） */
+  background: var(--wallpaper, url('/static/bg.jpg')) center / cover no-repeat;  /* cover=等比缩放铺满全屏，不留黑边；个性化可换壁纸 */
+  filter: blur(var(--wallpaper-blur, 0px));   /* 设置→壁纸模糊强度 */
+  transform: scale(1.05);      /* 模糊时边缘不露底 */
+}
+
+/* 提亮蒙版层：白天主题用极淡的白色纱罩压掉插画里过深的局部，
+   既保留画面清晰度，又保证上层深色字读得清 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(160deg, var(--shade-a), var(--shade-b));
+}
+
+/* 背景光斑：之前用 blur(60px) 的彩色圆叠在背景图之上会糊化插画，暂时关闭 */
+.bg-orbs { display: none; }

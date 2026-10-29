@@ -1,0 +1,86 @@
+# ─────────────────────────────────────────────
+# project-hub .gitignore
+# ─────────────────────────────────────────────
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# 密钥与本地数据（关键：绝不能提交！）
+# .data/ 含 secret.key（主密钥）与 hub.log（诊断日志）
+.data/
+# 账号库 / 用户库（含加密密码）
+*.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# 构建产物 / 日志 / 备份
+.backups/
+artifacts/
+*.log
+
+# 运行时用户数据
+.hub-trash/
+
+# WorkBuddy 工程元数据
+.workbuddy/
+
+# ─────────────────────────────────────────────
+# 入库前审计补漏（首次提交前追加；上方条目原样保留）
+# ─────────────────────────────────────────────
+
+# 云端配置：cloud.json 含真实 hubSecret，是唯一带真密钥的文件，绝不入库。
+# 功能不受影响：读取顺序是 cloud.public.json → cloud.json
+# （hub/accounts.py:190、hub/cloudauth.py:60），而 endpoint/publishableKey
+# 在 cloud.public.json 里都有；Python 侧 grep hubSecret 零命中，没人读它。
+cloud.json
+cloud.local.json
+
+# SQLite 边车文件：上面的 *.db 只匹配主库名，匹配不到 -wal/-shm/-journal。
+# 真实会产生的：demo-scripts/hub_accounts.db-wal 等
+# （tools/prepublish.py 的 RULES 已列出它们，说明运行时确实会生成）。
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# 发布隔离批次：tools/prepublish.py 生成，
+# manifest.json 里记着本机绝对路径 + 13 条敏感文件相对路径。
+.publish-hold/
+
+# 工具缓存
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 环境变量：hub 支持 HUB_SECRET_KEY 注入（见 hub/security.py），
+# 一旦有人把密钥落成 .env 就会跟着进库。
+.env
+.env.local
+
+# 保险项：崩溃备份、e2e 产物
+*.bak
+*.corrupt-*
+test-results/
+playwright-report/

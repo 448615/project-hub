@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────
+# .gitattributes — 行尾与二进制归一
+#
+# 为什么需要它：系统级 core.autocrlf=true（PortableGit 默认）会把检出内容
+# 一律写成 CRLF —— 那会让 starshu/start.sh 变成 CRLF，在 POSIX 上直接报
+# "bad interpreter: /bin/sh^M"。属性文件的优先级高于 core.autocrlf：只要命中
+# 规则，autocrlf 就不再参与决策。本仓库同时设了 core.autocrlf=false，
+# 让这里成为唯一决策点。
+# ─────────────────────────────────────────────
+
+# 1) 默认：文本入库为 LF，检出也是 LF（与 .editorconfig 的 end_of_line=lf 一致）
+* text=auto eol=lf
+
+# 2) Windows 批处理必须 CRLF：cmd.exe 解析 LF-only 的 if/goto/( ) 块有已知歧义
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 3) POSIX 脚本必须 LF，否则 ./start.sh 报 bad interpreter
+*.sh text eol=lf
+
+# 4) 二进制：显式声明，不依赖 git 的 NUL 探测（探测对大文件会静默降级）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.bmp binary
+*.icns binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.m4a binary
+*.mp4 binary
+*.webm binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.7z binary
+*.exe binary
+*.dll binary
+*.node binary
+*.db binary
+*.db-wal binary
+*.db-shm binary
+*.sqlite binary
+*.sqlite3 binary
+
+# 5) Markdown 按 markdown 排版做 diff（仅影响展示，不改内容）
+*.md diff=markdown

@@ -1,0 +1,26 @@
+{
+  "name": "starshu-bundle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "星枢合并版：星枢（starshu）内容运营中枢 + 桓梦工作台（huandream-workbench）构建产物",
+  "main": "server.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "dev": "node scripts/start.js",
+    "test": "node --test",
+    "check": "node scripts/check-syntax.js",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.10.0": true
+  }
+}

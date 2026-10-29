@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile check (语法/编译)
+        run: python -m compileall -q hub subapps.py main.py tests
+        shell: bash
+
+      - name: Version consistency (版本号一致性)
+        # hub/version.py 的 __version__ 必须与 pyproject.toml 的 [project].version 相同
+        run: |
+          PY_VER=$(python - <<'PY'
+          import re
+          txt = open("hub/version.py", encoding="utf-8").read()
+          m = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', txt)
+          print(m.group(1) if m else "MISSING")
+          PY
+          )
+          TOML_VER=$(python - <<'PY'
+          import re
+          txt = open("pyproject.toml", encoding="utf-8").read()
+          m = re.search(r'^\s*version\s*=\s*["\']([^"\']+)["\']', txt, re.M)
+          print(m.group(1) if m else "MISSING")
+          PY
+          )
+          echo "hub/version.py = $PY_VER"
+          echo "pyproject.toml = $TOML_VER"
+          if [ "$PY_VER" != "$TOML_VER" ]; then
+            echo "::error::版本号不一致：hub/version.py ($PY_VER) != pyproject.toml ($TOML_VER)"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Run test suites (9 套测试)
+        # 说明：部分套件依赖本机环境（Windows/COM/固定端口，见功能文档 §8），
+        # 在跨平台 CI 上可能不稳定。当前设为「仅报告、不阻断」，
+        # FIXME(P2)：确认各套件跨平台兼容后，移除 continue-on-error 升级为门禁。
+        continue-on-error: true
+        run: |
+          for f in tests/test_*.py; do
+            echo "── $f ──"
+            python "$f" || echo "  (非零退出：$f)"
+          done
+        shell: bash
+
+      - name: Ruff lint report (仅报告，不阻断)
+        # 暴露计划 §1 提到的宽泛异常（已用 BLE001 标注）等；
+        # P3 #10 里程碑：pyproject 已把 BLE 纳入 select，使 31 处宽泛异常「可见」；
+        # 待排期收窄后，把此步骤的 continue-on-error 移除、升级为门禁（阻断新增违规）。
+        continue-on-error: true
+        run: |
+          pip install ruff
+          ruff check hub tests
+        shell: bash

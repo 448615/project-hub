@@ -1,0 +1,14 @@
+{
+  "name": "项目枢纽 · 仿真桌面",
+  "short_name": "项目枢纽",
+  "description": "仿 Windows 桌面的 Web 仿真环境：窗口、便签、记事本、文件管理、终端、浏览器、虚拟桌面与设置中心",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e8eef8",
+  "theme_color": "#5B8CFF",
+  "icons": [
+    { "src": "/static/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

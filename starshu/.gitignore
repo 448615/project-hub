@@ -1,0 +1,19 @@
+node_modules/
+data/
+uploads/
+*.db
+*.db-wal
+*.db-shm
+*.corrupt-*
+*.bak
+test-results/
+.env
+.DS_Store
+
+# 桓梦工作台的目录联接（junction），指向仓库根的 ../workbench。
+# git 存不了 junction：core.symlinks=false 时会退化成一个内容为本机绝对路径的
+# 普通文件（clone 后 server.js:128 的 express.static 指着文件 → /workbench/
+# 静默 404 或错落到星枢前台），也可能被当成目录把 14MB 递归一遍。
+# 克隆后用 mklink /J workbench ..\workbench 重建，见根 README.md。
+# 必须带前导斜杠锚定，否则会误伤根目录真正要入库的 workbench/。
+/workbench

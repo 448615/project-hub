@@ -1,0 +1,41 @@
+# 前端脚本合并顺序（服务端 /static/js/bundle.js 按此清单拼接）
+# 这些是传统脚本（非 ESM），共享同一全局作用域，加载顺序 = 原 app.js 的执行顺序。
+# 改动顺序会破坏初始化依赖，勿调换；新增文件必须登记在这里，否则不会生效。
+common.js
+js/000-core.js
+js/010-window-layout.js
+js/017-ui-dialog.js
+js/020-settings-core.js
+js/030-preview-doc.js
+js/040-fm-helpers.js
+js/041-fm-window.js
+js/042-launcher.js
+js/050-account-session.js
+js/051-auth-veil.js
+js/052-role-data.js
+js/053-accounts-panel.js
+js/054-app-boot.js
+js/055-guest-view.js
+js/060-refresh-icons.js
+js/070-window-open.js
+js/080-clock-volume.js
+js/090-menus-hotkeys.js
+js/100-notes-folder-trash.js
+js/110-shell-wallpaper.js
+js/119-settings-panels.js
+js/120-theme-settings.js
+js/121-settings-appearance.js
+js/122-settings-personal.js
+js/123-settings-window.js
+js/124-settings-system.js
+js/125-settings-account.js
+js/130-lock-sticky.js
+js/140-calendar.js
+js/150-subapp-terminal.js
+js/1510-browser-store.js
+js/151-browser.js
+js/152-editor-wizard.js
+js/153-desktop-views.js
+js/154-notes-center.js
+js/999-boot.js
+sw-register.js

@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>桓梦工作台</title>
+
+  <!-- 必须排在最前：注册脚本加载失败的兜底监听，晚于主 bundle 就等于没注册 -->
+  <script src="./boot-guard.js"></script>
+  <script src="./heal-music.js"></script>
+  <!-- 本地存储守卫：版本标记 + 启动时扫描坏数据 + 一键修复（只提示，不静默删数据） -->
+  <script src="./storage-guard.js"></script>
+  <script type="module" crossorigin src="./assets/index-k3Vt9Qmd.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BxNXup4h.css">
+</head>
+<body>
+
+<!-- P0: Fatal banner (script load / boot failure) -->
+<div id="fatalBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#e5484d;color:#fff;padding:10px 16px;font-size:0.85rem;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);"></div>
+
+<!-- ==================== SIDEBAR TOGGLE ==================== -->
+<button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="折叠/展开侧边栏">&#8249;</button>
+
+<!-- ==================== SIDEBAR ==================== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">晨</div>
+    <span class="logo-text">晨</span>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">&#8865;</span><span>工作台概览</span></div>
+    <div class="nav-item" data-page="hotTopics"><span class="nav-icon">&#9673;</span><span>文章</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" data-page="calendar"><span class="nav-icon">&#9728;</span><span>日历</span></div>
+    <div class="nav-item" data-page="todo"><span class="nav-icon">&#9744;</span><span>今日待办</span></div>
+    <div class="nav-item" data-page="habit"><span class="nav-icon">&#10003;</span><span>习惯打卡</span></div>
+    <div class="nav-item" data-page="bookshelf"><span class="nav-icon">&#9635;</span><span>我的书架</span></div>
+    <div class="nav-item" data-page="water"><span class="nav-icon">&#128167;</span><span>喝水时间</span></div>
+    <div class="nav-item" data-page="review"><span class="nav-icon">&#9678;</span><span>今日复盘</span></div>
+    <div class="nav-item" data-page="goal"><span class="nav-icon">&#127919;</span><span>目标计划</span></div>
+    <div class="nav-item" data-page="exercise"><span class="nav-icon">&#8635;</span><span>今日运动</span></div>
+    <div class="nav-item" data-page="inspiration"><span class="nav-icon">&#10038;</span><span>今日灵感</span></div>
+    <div class="nav-item" data-page="english"><span class="nav-icon">Aa</span><span>英语学习</span></div>
+  </nav>
+  <div class="nav-divider"></div>
+  <!-- ==================== MUSIC PLAYER ==================== -->
+  <div class="music-player" id="musicPlayer">
+    <div class="music-player-header">
+      <span class="music-icon">&#9835;</span>
+      <span class="music-track-name" id="musicTrackName">未加载音乐</span>
+      <span class="music-count" id="musicCount"></span>
+    </div>
+    <div class="music-progress-row">
+      <span class="music-time" id="musicCurrent">0:00</span>
+      <input type="range" class="music-progress" id="musicProgress" min="0" max="100" step="0.1" value="0" oninput="seekMusic(this.value)" title="拖动定位">
+      <span class="music-time" id="musicDuration">0:00</span>
+    </div>
+    <div class="music-controls-row">
+      <button class="music-btn-sm" onclick="prevMusic()" title="上一首">&#9198;</button>
+      <button class="music-btn" id="musicPlayBtn" onclick="toggleMusic()" title="播放/暂停">&#9654;</button>
+      <button class="music-btn-sm" onclick="nextMusic()" title="下一首">&#9197;</button>
+      <button class="music-btn-sm" id="musicModeBtn" onclick="cycleMusicMode()" title="顺序播放">&#8644;</button>
+      <input type="range" class="music-volume-slider" id="musicVolume" min="0" max="1" step="0.05" value="0.5" oninput="setMusicVolume(this.value)" title="音量">
+    </div>
+    <button class="music-import-btn" onclick="document.getElementById('musicFileInput').click()" title="导入本地音乐（支持多选）">＋ 导入音乐</button>
+    <input type="file" id="musicFileInput" accept="audio/*" multiple onchange="importMusicFile(this)" style="display:none;">
+    <ul class="music-list" id="musicList"></ul>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="sidebar-footer">
+    <div id="userPanelMini" style="display:flex;align-items:center;gap:8px;padding:8px 6px;cursor:pointer;border-radius:8px;margin-bottom:4px;" onclick="window.__up_open()">
+      <div id="userMiniAvatar" style="width:28px;height:28px;border-radius:50%;background:#5b9cd6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:600;">?</div>
+      <span id="userMiniName" style="font-size:0.85rem;color:var(--text-secondary);">用户 / 登录</span>
+    </div>
+    
+    <button class="theme-toggle" id="themeToggle"><span class="nav-icon">&#9677;</span><span>切换深浅模式</span></button>
+  </div>
+</aside>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<main class="main-content" id="mainContent">
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="search-box">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" placeholder="搜索待办、书籍、灵感、复盘、单词..." id="globalSearch" oninput="globalSearchFn()">
+  </div>
+  <button class="btn btn-sm btn-outline" onclick="toggleShortcutsPanel()" title="快捷键 (? 键)">&#63;</button>
+</div>
+<div id="searchResults" style="display:none;margin-bottom:4px;max-height:360px;overflow-y:auto;"></div>
+
+<!-- SKELETON LOADING (P2) -->
+<div id="skeletonDashboard" class="dashboard-grid" style="display:none;">
+  <div class="skeleton-ring" style="grid-column:1;"></div>
+  <div class="skeleton-ring" style="grid-column:2;"></div>
+  <div class="skeleton-card" style="grid-column:3;"></div>
+</div>
+
+<!-- PAGE: Dashboard -->
+<section class="page active" id="page-dashboard">
+  <!-- P1: Empty-state guide -->
+  <div class="glass-card" id="emptyStateHint" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;margin-bottom:12px;">
+    <span class="text-sm color-secondary">工作台还是空的，先填充一些示例数据快速体验吧～</span>
+    <button class="btn btn-sm" onclick="fillSampleData()">一键填充示例数据</button>
+  </div>
+  <div class="quick-entries" id="quickEntries"></div>
+  <div class="glass-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;margin-bottom:12px;">
+    <div class="flex-1">
+      <div class="card-title mb-1">每周数据洞察</div>
+      <span class="text-sm color-secondary">基于你的真实记录，自动生成本周效率报告与可行动建议</span>
+    </div>
+    <button class="btn btn-sm" onclick="generateWeeklyInsight()">查看本周洞察</button>
+  </div>
+  <div class="dashboard-grid">
+    <div class="glass-card dashboard-full" id="signinWidget"></div>
+    <div class="glass-card text-center">
+      <div class="card-title mb-3">今日待办进度</div>
+      <div class="ring-chart-wrap" id="todoRingWrap"><canvas id="todoRing"></canvas><div class="ring-pct">0%</div></div>
+      <div class="mt-2 text-sm color-secondary" id="todoStats"></div>
+    </div>
+    <div class="glass-card text-center">
+      <div class="card-title mb-3">今日饮水量</div>
+      <div class="ring-chart-wrap" id="waterRingWrap"><canvas id="waterRing"></canvas><div class="ring-pct">0%</div></div>
+      <div class="mt-2 text-sm color-secondary" id="waterStats"></div>
+    </div>
+    <div class="glass-card">
+      <div class="card-title mb-3">正在阅读</div>
+      <div id="readingStatus" class="text-sm color-secondary"></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:6px;" id="readingCards"></div>
+    </div>
+    <div class="glass-card">
+      <div class="card-title mb-3">今日心情</div>
+      <div class="mood-picker" id="moodPicker"></div>
+      <input type="text" id="moodNote" placeholder="一句话记录此刻心情（可选）" maxlength="50" class="mt-2" onkeydown="if(event.key==='Enter')saveMoodNote()">
+      <div class="mood-week" id="moodWeek"></div>
+    </div>
+    <div class="glass-card">
+      <div class="card-title mb-3">今日灵感速记</div>
+      <textarea id="quickInspiration" placeholder="记录突然闪现的想法..." style="width:100%;min-height:80px;padding:10px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-family:inherit;font-size:0.88rem;resize:vertical;" onkeydown="if(event.key==='Enter'&&event.ctrlKey){saveQuickInspiration();event.preventDefault();}"></textarea>
+      <button class="btn btn-sm mt-2" onclick="saveQuickInspiration()">保存灵感</button>
+      <span class="text-xs color-tertiary ml-1">Ctrl+Enter 快捷保存</span>
+    </div>
+    <div class="glass-card">
+      <div class="card-title mb-3">今日习惯打卡</div>
+      <div id="habitDashboardList" class="habit-dash-list"></div>
+      <div id="habitDashboardEmpty" class="empty-state">还没有习惯，去「习惯打卡」添加吧</div>
+    </div>
+    <div class="glass-card text-center dashboard-full">
+      <div class="card-title mb-3">今日番茄专注</div>
+      <div id="pomodoroTodayStats" class="mb-2" style="font-size:2rem;font-weight:300;"></div>
+      <div class="text-sm color-secondary">累计专注时长</div>
+    </div>
+    <div class="glass-card dashboard-full">
+      <div class="card-title mb-3">本月目标</div>
+      <div id="goalDashboard" class="goal-dash-list"></div>
+      <div id="goalDashboardEmpty" class="empty-state">还没有目标，去「目标计划」设定吧</div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Articles -->
+<section class="page" id="page-hotTopics">
+  <div class="glass-card">
+    <div class="card-header">
+      <span class="card-title">知识文章</span>
+      <span class="card-subtitle">精选阅读 · 每日提升</span>
+    </div>
+    <div id="hotTopicsList"></div>
+  </div>
+</section>
+
+<!-- PAGE: Calendar -->
+<section class="page" id="page-calendar">
+  <div class="two-col">
+    <div class="glass-card">
+      <div class="calendar-header">
+        <span class="calendar-nav" onclick="calendarNav(-1)">&#8249;</span>
+        <span class="calendar-month" id="calendarMonth"></span>
+        <span class="calendar-nav" onclick="calendarNav(1)">&#8250;</span>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="daily-quote" id="dailyQuote">
+        <div class="daily-quote-text">以晨光为序，好好安排每一天。</div>
+        <div class="daily-quote-source">— 晨·序</div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-sm" onclick="navigateTo('todo')">+ 新建待办</button>
+        <button class="btn btn-sm btn-outline ml-1" onclick="openReminderModal()">&#9200; 设置提醒</button>
+      </div>
+    </div>
+    <div>
+      <div class="glass-card mb-3">
+        <div class="card-title mb-2">真实黄历</div>
+        <div id="almanacContent" class="text-sm"></div>
+      </div>
+      <div class="glass-card mb-3">
+        <div class="card-title mb-2">今日信息</div>
+        <div id="horoscopeContent" class="text-sm"></div>
+      </div>
+      <div class="glass-card">
+        <div class="card-title mb-2">实时资讯 <span class="text-xs color-secondary" id="rssUpdated" style="font-weight:400;"></span></div>
+        <div id="rssList" class="rss-list"><div class="empty-state">加载中…</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Todo -->
+<section class="page" id="page-todo">
+  <div class="two-col">
+    <div class="glass-card">
+      <div class="card-title mb-3">待办清单</div>
+      <div class="todo-priority-select">
+        <span class="text-xs color-secondary">优先级：</span>
+        <div class="priority-dot priority-red active" data-priority="red" onclick="setPriority('red',this)" title="紧急重要"></div>
+        <div class="priority-dot priority-orange" data-priority="orange" onclick="setPriority('orange',this)" title="重要不紧急"></div>
+        <div class="priority-dot priority-blue" data-priority="blue" onclick="setPriority('blue',this)" title="紧急不重要"></div>
+        <div class="priority-dot priority-gray" data-priority="gray" onclick="setPriority('gray',this)" title="普通琐事"></div>
+      </div>
+      <div class="todo-input-wrap">
+        <input type="text" id="todoInput" placeholder="添加新任务..." onkeydown="if(event.key==='Enter')addTodo()">
+        <button class="btn" onclick="addTodo()">添加</button>
+      </div>
+      <div class="inline-flex mb-2" style="gap:6px;">
+        <input type="date" id="todoDeadline" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.8rem;" title="截止日期">
+        <input type="text" id="todoNote" placeholder="备注(可选)" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.8rem;" maxlength="200">
+      </div>
+      <div class="todo-actions">
+        <button class="btn btn-sm btn-outline" onclick="clearCompleted()">清除已完成</button>
+        <button class="btn btn-sm btn-danger" onclick="clearAllTodos()">全部清空</button>
+      </div>
+      <div class="todo-list" id="todoList"></div>
+      <div id="todoEmpty" class="empty-state">暂无待办任务</div>
+      <div class="heatmap-wrap" id="heatmapWrap">
+        <div class="heatmap-header">
+          <span class="heatmap-title">月度活跃热力图</span>
+          <span class="heatmap-month-label" id="heatmapMonthLabel"></span>
+        </div>
+        <div class="heatmap-grid" id="heatmapGrid"></div>
+        <div class="heatmap-legend">
+          <span class="heatmap-legend-label">低</span>
+          <span class="heatmap-legend-dot lv-0"></span>
+          <span class="heatmap-legend-dot lv-1"></span>
+          <span class="heatmap-legend-dot lv-2"></span>
+          <span class="heatmap-legend-dot lv-3"></span>
+          <span class="heatmap-legend-dot lv-4"></span>
+          <span class="heatmap-legend-label">高</span>
+        </div>
+        <div class="heatmap-quote" id="heatmapQuote">稳步积累，日子自有温度</div>
+      </div>
+    </div>
+    <div class="glass-card pomodoro-wrap">
+      <div class="card-title mb-3">番茄专注计时器</div>
+      <div class="pomodoro-label" id="pomodoroLabel">专注时间 25:00</div>
+      <div class="pomodoro-display" id="pomodoroDisplay">25:00</div>
+      <div class="pomodoro-controls">
+        <button class="btn btn-sm" id="pomodoroStart" onclick="togglePomodoro()">开始专注</button>
+        <button class="btn btn-sm btn-outline" onclick="resetPomodoro()">重置</button>
+      </div>
+      <div class="pomodoro-stats" id="pomodoroStats">今日累计：0 分钟</div>
+      <div class="mt-3 inline-flex">
+        <label class="text-xs color-secondary">专注：</label>
+        <input type="number" id="focusDuration" value="25" min="1" max="120" style="width:50px;padding:4px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);text-align:center;"> 分钟
+        <label class="text-xs color-secondary ml-1">休息：</label>
+        <input type="number" id="breakDuration" value="5" min="1" max="60" style="width:50px;padding:4px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);text-align:center;"> 分钟
+      </div>
+      <div class="pomo-noise mt-3">
+        <div class="text-xs color-secondary mb-2">白噪音</div>
+        <div class="noise-btns" id="noiseBtns">
+          <button class="noise-btn active" data-noise="off" onclick="setNoise('off')">关</button>
+          <button class="noise-btn" data-noise="rain" onclick="setNoise('rain')">\uD83D\uDCA7 雨声</button>
+          <button class="noise-btn" data-noise="fire" onclick="setNoise('fire')">\uD83D\uDD25 篝火</button>
+          <button class="noise-btn" data-noise="cafe" onclick="setNoise('cafe')">\u2615 咖啡馆</button>
+          <button class="noise-btn" data-noise="white" onclick="setNoise('white')">白噪</button>
+        </div>
+      </div>
+    </div>
+    <div class="glass-card text-center">
+      <div class="card-title mb-3">最近 14 天专注时长</div>
+      <div class="chart-wrap" id="pomoChartWrap" style="height:180px;"><canvas id="pomoChart"></canvas></div>
+      <div class="text-sm color-secondary mt-2" id="pomoChartSummary"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Habit Tracker -->
+<section class="page" id="page-habit">
+  <div class="two-col">
+    <div class="glass-card">
+      <div class="card-header">
+        <span class="card-title">我的习惯</span>
+        <span class="card-subtitle">坚持每天的小行动</span>
+      </div>
+      <div class="habit-add-wrap">
+        <input type="text" id="habitInput" placeholder="新增习惯，如：早睡、冥想、写日记..." maxlength="20" onkeydown="if(event.key==='Enter')addHabit()">
+        <button class="btn" onclick="addHabit()">添加</button>
+      </div>
+      <div class="habit-list" id="habitList"></div>
+      <div id="habitEmpty" class="empty-state">还没有习惯，添加第一个吧</div>
+    </div>
+    <div class="glass-card">
+      <div class="card-title mb-3">本周完成热力图</div>
+      <div class="heatmap-wrap" id="habitHeatmapWrap">
+        <div class="heatmap-grid" id="habitHeatmapGrid"></div>
+        <div class="heatmap-legend">
+          <span class="heatmap-legend-label">少</span>
+          <span class="heatmap-cell" style="background:#edeef1;"></span>
+          <span class="heatmap-cell" style="background:#cfe3d2;"></span>
+          <span class="heatmap-cell" style="background:#8fce9f;"></span>
+          <span class="heatmap-cell" style="background:#4caf72;"></span>
+          <span class="heatmap-legend-label">多</span>
+        </div>
+      </div>
+      <div class="text-sm color-secondary mt-3" id="habitSummary"></div>
+    </div>
+    <div class="glass-card">
+      <div class="card-title mb-3">习惯统计面板</div>
+      <div class="section-divider"></div>
+      <div class="habit-stats-grid" id="habitStatsGrid"></div>
+      <div class="mt-3">
+        <div class="card-subtitle mb-2">近 14 天整体打卡率</div>
+        <canvas id="habitTrendChart" style="width:100%;height:110px;display:block;"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Goals -->
+<section class="page" id="page-goal">
+  <div class="two-col">
+    <div class="glass-card">
+      <div class="card-header">
+        <span class="card-title">设定目标</span>
+        <span class="card-subtitle">月度 / 季度，自动追踪进度</span>
+      </div>
+      <div class="mt-2">
+        <input type="text" id="goalTitle" placeholder="目标名称，如：本月运动 20 次" maxlength="40">
+        <div class="goal-form-row mt-2">
+          <select id="goalType" class="field-input">
+            <option value="exercise">运动次数</option>
+            <option value="book">读完书数</option>
+            <option value="pomodoro">专注分钟</option>
+            <option value="habit">习惯打卡次数</option>
+            <option value="custom">自定义（手填进度）</option>
+          </select>
+          <select id="goalPeriod" class="field-input">
+            <option value="month">本月</option>
+            <option value="quarter">本季度</option>
+          </select>
+          <input type="number" id="goalTarget" placeholder="目标值" min="1" value="20" class="field-input" style="width:80px;">
+          <button class="btn" onclick="addGoal()">添加</button>
+        </div>
+        <div class="text-xs color-tertiary mt-1">运动/读书/专注/习惯类目标会根据本月数据自动统计进度，自定义目标请手动更新进度。</div>
+      </div>
+    </div>
+    <div class="glass-card">
+      <div class="card-title mb-3">目标进度</div>
+      <div class="goal-list" id="goalList"></div>
+      <div id="goalEmpty" class="empty-state">还没有目标</div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Bookshelf -->
+<section class="page" id="page-bookshelf">
+  <div class="two-col">
+    <div class="glass-card">
+      <div class="card-title mb-3">添加书籍</div>
+      <div class="form-group-title">基本信息</div>
+      <input type="text" id="bookName" placeholder="书名" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);margin-bottom:6px;font-size:0.88rem;" maxlength="100">
+      <input type="text" id="bookAuthor" placeholder="作者" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);margin-bottom:6px;font-size:0.88rem;" maxlength="60">
+      <div class="inline-flex mb-3">
+        <input type="number" id="bookPages" placeholder="总页数" min="1" max="99999" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.88rem;">
+        <select id="bookStatus" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.88rem;">
+          <option value="reading">正在阅读</option><option value="want">想读</option>
+        </select>
+      </div>
+      <div class="form-group-title">阅读计划</div>
+      <div class="inline-flex mb-2">
+        <input type="date" id="bookPlanDate" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.8rem;" title="阅读计划日">
+        <input type="number" id="bookDailyGoal" placeholder="每日目标页数" value="30" min="1" max="1000" style="width:100px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.8rem;">
+      </div>
+      <button class="btn btn-sm" onclick="addBook()">添加书籍</button>
+    </div>
+    <div class="glass-card">
+      <div class="tabs" id="bookTabs">
+        <div class="tab active" data-tab="reading" onclick="switchBookTab('reading')">正在阅读</div>
+        <div class="tab" data-tab="want" onclick="switchBookTab('want')">想读清单</div>
+        <div class="tab" data-tab="done" onclick="switchBookTab('done')">已读完</div>
+        
+      </div>
+      <div id="bookList" style="max-height:350px;overflow-y:auto;"></div>
+      <div id="bookEmpty" class="empty-state">书架空空，添加第一本书吧</div>
+    </div>
+  </div>
+  <div class="glass-card mt-3">
+    <div class="card-title mb-3">摘抄 & 感悟</div>
+    <div class="two-col">
+      <div>
+        <div class="form-group-title">新增摘抄</div>
+        <textarea id="excerptText" placeholder="记录读书摘抄..." style="width:100%;min-height:60px;padding:10px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-family:inherit;font-size:0.88rem;resize:vertical;"></textarea>
+        <input type="text" id="excerptBook" placeholder="关联书籍（可选）" maxlength="60" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);margin-top:8px;font-size:0.85rem;">
+        <button class="btn btn-sm mt-2" onclick="addExcerpt()">保存摘抄</button>
+      </div>
+      <div>
+        <div class="form-group-title">浏览历史</div>
+        <input type="text" id="excerptSearch" placeholder="搜索历史摘抄..." oninput="renderExcerpts()" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);margin-bottom:6px;font-size:0.85rem;">
+        <div id="excerptList" style="max-height:280px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Water -->
+<section class="page" id="page-water">
+  <div class="water-asym-cols">
+    <div class="glass-card water-left-card">
+      <div class="card-title">饮水进度</div>
+      <div class="water-ring-big" id="waterRingLargeWrap">
+        <canvas id="waterRingLarge"></canvas>
+        <div class="water-ring-pct" id="waterRingPct">0%</div>
+      </div>
+      <div class="water-ml-display" id="waterStatsLarge">0 / 2000 ml</div>
+      <div class="water-excess" id="waterExcess"></div>
+    </div>
+    <div class="glass-card water-right-card">
+      <div class="card-title">快速记录</div>
+      <button class="water-reset-sm" id="waterResetBtn" title="重置今日饮水" onclick="resetWaterToday()">&#8634;</button>
+      <div class="water-quick-btns">
+        <button class="water-quick-btn" onclick="addWater(200)">200ml</button>
+        <button class="water-quick-btn" onclick="addWater(300)">300ml</button>
+        <button class="water-quick-btn" onclick="addWater(500)">500ml</button>
+      </div>
+      <div class="water-custom">
+        <input type="number" id="waterCustom" placeholder="自定义水量" min="50" max="5000" step="50">
+        <button class="btn btn-sm" onclick="addWater(parseInt(document.getElementById('waterCustom').value)||0)">记录</button>
+      </div>
+      <div class="water-goal">
+        每日目标：<input type="number" id="waterGoal" value="2000" min="100" max="10000" step="100" onchange="saveWaterGoal()"> ml
+      </div>
+      <div class="section-divider"></div>
+      <div class="water-history" id="waterHistory"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Review -->
+<section class="page" id="page-review">
+  <div class="glass-card mb-3">
+    <div class="card-title mb-3">今日综合数据看板</div>
+    <div class="section-divider"></div>
+    <div class="three-col">
+      <div class="text-center">
+        <div class="ring-chart-wrap" id="reviewTodoRingWrap" style="width:70px;height:70px;"><canvas id="reviewTodoRing"></canvas><div class="ring-pct" style="font-size:0.65rem;">0%</div></div>
+        <div class="text-xs color-secondary mt-1">待办完成率</div>
+      </div>
+      <div class="text-center">
+        <div class="ring-chart-wrap" id="reviewWaterRingWrap" style="width:70px;height:70px;"><canvas id="reviewWaterRing"></canvas><div class="ring-pct" style="font-size:0.65rem;">0%</div></div>
+        <div class="text-xs color-secondary mt-1">饮水完成度</div>
+      </div>
+      <div class="text-center">
+        <div class="ring-chart-wrap" id="reviewReadRingWrap" style="width:70px;height:70px;"><canvas id="reviewReadRing"></canvas><div class="ring-pct" style="font-size:0.65rem;">0%</div></div>
+        <div class="text-xs color-secondary mt-1">阅读/专注</div>
+      </div>
+      <div class="text-center">
+        <div class="ring-chart-wrap" id="reviewPomoRingWrap" style="width:70px;height:70px;"><canvas id="reviewPomoRing"></canvas><div class="ring-pct" style="font-size:0.65rem;">0%</div></div>
+        <div class="text-xs color-secondary mt-1">番茄专注</div>
+      </div>
+      <div class="text-center">
+        <div class="ring-chart-wrap" id="reviewHabitRingWrap" style="width:70px;height:70px;"><canvas id="reviewHabitRing"></canvas><div class="ring-pct" style="font-size:0.65rem;">0%</div></div>
+        <div class="text-xs color-secondary mt-1">习惯打卡</div>
+      </div>
+    </div>
+  </div>
+  <div class="glass-card mt-3">
+    <div class="card-title mb-3">近 30 天情绪趋势</div>
+    <div class="section-divider"></div>
+    <canvas id="moodTrendChart" style="width:100%;height:120px;display:block;"></canvas>
+    <div class="text-xs color-tertiary mt-1" id="moodTrendLegend">记录每日心情，观察自己的情绪节律</div>
+  </div>
+  <div class="glass-card">
+    <div class="card-title mb-3">每日三问自我反馈</div>
+    <div class="section-divider"></div>
+    <div class="review-question">
+      <label>今天完成了什么</label>
+      <textarea id="reviewQ1" placeholder="写下今天完成的事情..."></textarea>
+    </div>
+    <div class="review-question">
+      <label>今天学到了什么新知识 / 感悟</label>
+      <textarea id="reviewQ2" placeholder="今天的新收获..."></textarea>
+    </div>
+    <div class="review-question">
+      <label>明天需要改进的地方</label>
+      <textarea id="reviewQ3" placeholder="反思与改进..."></textarea>
+    </div>
+    <button class="btn" onclick="saveReview()">保存今日复盘</button>
+    <button class="btn btn-outline btn-sm ml-1" onclick="loadReviewHistory()">查看历史复盘</button>
+    <button class="btn btn-outline btn-sm ml-1" onclick="generateWeeklySummary()">生成周汇总</button>
+  </div>
+  <div class="glass-card mt-3" id="reviewHistoryCard" style="display:none;">
+    <div class="card-header">
+      <span class="card-title">历史复盘记录</span>
+      <select id="reviewViewMode" onchange="loadReviewHistory()" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.82rem;">
+        <option value="week">按周</option><option value="month">按月</option>
+      </select>
+    </div>
+    <div class="review-history" id="reviewHistoryList"></div>
+  </div>
+</section>
+
+<!-- PAGE: Exercise -->
+<section class="page" id="page-exercise">
+  <div class="exercise-asym-cols">
+    <div class="glass-card exercise-left-card">
+      <div class="card-title">体重追踪</div>
+      <!-- Quick exercise buttons -->
+      <div class="ex-quick-row">
+        <button class="ex-quick-btn" onclick="quickExercise('慢跑',30)" data-type="慢跑">慢跑</button>
+        <button class="ex-quick-btn" onclick="quickExercise('拉伸',15)" data-type="拉伸">拉伸</button>
+        <button class="ex-quick-btn" onclick="quickExercise('力量训练',45)" data-type="力量训练">力量</button>
+        <button class="ex-quick-btn" onclick="quickExercise('散步',30)" data-type="散步">散步</button>
+      </div>
+      <!-- Weight input -->
+      <div class="ex-weight-row">
+        <input type="number" id="weightInput" placeholder="今日体重 (kg)" step="0.1" min="20" max="300">
+        <button class="btn btn-sm ex-record-btn" onclick="addWeight()">记录</button>
+      </div>
+      <!-- Goal + gap -->
+      <div class="ex-goal-row">
+        <span>目标体重：<input type="number" id="weightGoal" value="60" min="20" max="300" step="0.5" onchange="saveWeightGoal();drawWeightChart();renderExerciseGoal();"> kg</span>
+        <span class="ex-goal-gap" id="exerciseGoalGap"></span>
+      </div>
+      <!-- Weekly progress -->
+      <div class="ex-weekly-progress" id="exerciseWeeklyProgress">
+        <div class="ex-weekly-header">
+          <span>本周运动进度</span>
+          <span class="ex-weekly-count" id="exWeeklyCount">0/5</span>
+        </div>
+        <div class="progress-bar-wrap ex-progress-bar">
+          <div class="progress-bar-fill" id="exWeeklyBar" style="width:0%;"></div>
+        </div>
+      </div>
+      <!-- Chart -->
+      <div class="ex-chart-section">
+        <canvas id="weightChart" width="400" height="200"></canvas>
+        <div class="chart-legend">
+          <span><span class="chart-legend-dot" style="background:var(--accent-blue);"></span>实际体重</span>
+          <span><span class="chart-legend-dot" style="background:var(--accent-mint);"></span>目标体重</span>
+        </div>
+        <select id="weightRange" onchange="drawWeightChart()">
+          <option value="7">近7天</option><option value="30">近30天</option>
+        </select>
+      </div>
+    </div>
+    <div class="glass-card exercise-right-card">
+      <div class="card-title">今日运动</div>
+      <!-- Today's data -->
+      <div class="ex-today-stats">
+        <div class="ex-stat-item">
+          <div class="ex-stat-value" id="exTodayDuration">0</div>
+          <div class="ex-stat-label">运动时长 (min)</div>
+        </div>
+        <div class="ex-stat-item">
+          <div class="ex-stat-value" id="exTodayCalories">0</div>
+          <div class="ex-stat-label">消耗热量 (kcal)</div>
+        </div>
+        <div class="ex-stat-item">
+          <div class="ex-stat-value" id="exTodaySets">0</div>
+          <div class="ex-stat-label">今日组数</div>
+        </div>
+      </div>
+      <!-- Today's exercise list -->
+      <div class="section-divider"></div>
+      <div class="ex-today-list" id="exerciseList"></div>
+      <!-- Detail input for custom duration -->
+      <div class="ex-custom-row">
+        <input type="number" id="exerciseDuration" placeholder="自定义时长 (min)" min="1" max="600">
+        <select id="exerciseType">
+          <option value="跑步">跑步</option><option value="跳绳">跳绳</option><option value="瑜伽">瑜伽</option>
+          <option value="游泳">游泳</option><option value="骑行">骑行</option><option value="力量训练">力量训练</option>
+          <option value="散步">散步</option><option value="其他">其他</option>
+        </select>
+        <button class="btn btn-sm" onclick="addExercise()">记录</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Inspiration -->
+<section class="page" id="page-inspiration">
+  <div class="two-col">
+    <div>
+      <div class="glass-card mb-3">
+        <div class="card-title mb-3">灵感记录</div>
+        <div class="tabs" id="inspirationTabs">
+          <div class="tab active" data-tab="text" onclick="switchInspirationTab('text')">文字记录</div>
+          <div class="tab" data-tab="url" onclick="switchInspirationTab('url')">网址收藏</div>
+        </div>
+        <div class="section-divider"></div>
+        <div id="inspirationTextPanel">
+          <div class="inspiration-record">
+            <textarea id="inspirationInput" placeholder="记录灵感..." onkeydown="if(event.key==='Enter'&&event.ctrlKey){addInspiration();event.preventDefault();}"></textarea>
+          </div>
+          <div class="inline-flex mb-2">
+            <select id="inspirationCategory" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.82rem;">
+              <option value="创意">创意</option><option value="学习">学习</option><option value="写作">写作</option><option value="生活">生活</option>
+            </select>
+            <button class="btn btn-sm" onclick="addInspiration()">保存灵感</button>
+          </div>
+        </div>
+        <div id="inspirationUrlPanel" style="display:none;">
+          <div class="url-input-wrap">
+            <input type="text" id="urlInput" placeholder="粘贴视频/文章链接 (http(s)://...) ...">
+          </div>
+          <input type="text" id="urlNote" placeholder="添加备注（可选）" maxlength="200" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);margin-bottom:6px;font-size:0.85rem;">
+          <button class="btn btn-sm" onclick="addUrlInspiration()">收藏链接</button>
+        </div>
+      </div>
+      <div class="glass-card">
+        <div class="card-title mb-3">每周深度思考提醒</div>
+        <div class="text-sm color-secondary mb-2">设定每周思考日，汇总本周灵感进行深度思考</div>
+        <select id="settingsThinkDay" onchange="updateSetting('thinkDay', this.value)" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.82rem;width:100%;">
+          <option value="1">周一</option><option value="2">周二</option><option value="3">周三</option>
+          <option value="4">周四</option><option value="5">周五</option><option value="6">周六</option><option value="0">周日</option>
+        </select>
+      </div>
+    </div>
+    <div class="glass-card">
+      <div class="card-header">
+        <span class="card-title">灵感库</span>
+        <select id="inspirationFilter" onchange="renderInspirations()" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--bg-glass);color:var(--text-primary);font-size:0.82rem;">
+          <option value="all">全部分类</option><option value="创意">创意</option><option value="学习">学习</option>
+          <option value="写作">写作</option><option value="生活">生活</option><option value="网址">网址收藏</option>
+        </select>
+      </div>
+      <div class="section-divider"></div>
+      <div class="inspiration-list" id="inspirationList"></div>
+      <div id="inspirationEmpty" class="empty-state">灵感空间等待你的填充</div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: English -->
+<section class="page" id="page-english">
+  <div class="glass-card mb-3">
+    <div class="card-header">
+      <div class="english-title-row">
+        <span class="card-title">今日英语学习（总时长 30 分钟）</span>
+        <div class="english-timer">
+          <span class="english-timer-display" id="englishTimerDisplay">30:00</span>
+          <button class="btn btn-xs english-timer-btn" id="englishTimerBtn" onclick="toggleEnglishTimer()">开始</button>
+        </div>
+      </div>
+      <span class="card-subtitle" id="englishProgress">今日进度：0%</span>
+    </div>
+  </div>
+  <div class="english-asym-cols">
+    <div class="glass-card english-left-card">
+      <div class="card-header">
+        <span class="card-title">单词记忆</span>
+        <span class="card-subtitle" id="wordProgress"></span>
+      </div>
+      <div class="section-divider"></div>
+      <div id="wordCards"></div>
+      <div class="word-nav-row">
+        <button class="btn btn-sm" onclick="showPrevWord()">上一个</button>
+        <span class="text-sm color-secondary" id="wordIndexLabel">1 / 100</span>
+        <button class="btn btn-sm" onclick="showNextWord()">下一个</button>
+      </div>
+      <div class="text-center mt-2">
+        <button class="btn btn-sm btn-outline" onclick="reviewYesterdayWords()">复习昨天单词</button>
+      </div>
+      <div id="reviewWords" class="mt-3"></div>
+    </div>
+    <div class="glass-card english-right-card">
+      <div class="card-header">
+        <span class="card-title">英语口语</span>
+        <span class="card-subtitle" id="speakingTime">今日练习：0 分钟</span>
+      </div>
+      <div class="section-divider"></div>
+      <div id="dialogueCards"></div>
+      <div class="text-center mt-3">
+        <button class="btn btn-sm" onclick="recordSpeaking()">练习完成 (记录1分钟)</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: Settings -->
+<section class="page" id="page-settings">
+  <div class="glass-card">
+    <div class="card-title mb-3">个性化自定义设置</div>
+    <div class="section-divider"></div>
+
+    <div class="form-group-title">外观设置</div>
+    <div class="settings-row">
+      <span class="settings-label">卡片透明度</span>
+      <input type="range" id="cardOpacity" min="30" max="90" value="70" oninput="updateCardOpacity()">
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">背景主题色</span>
+      <input type="color" id="bgTint" value="#f5f5f7" onchange="updateBgTint()">
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">强调色</span>
+      <input type="color" id="accentColor" value="#5b9cd6" onchange="updateAccent()">
+    </div>
+
+    <!-- P2: Reduce transparency -->
+    <div class="settings-row">
+      <span class="settings-label">降低透明度（实色模式）</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="reduceTransparency" onchange="toggleReduceTransparency()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <!-- P2: Font scale -->
+    <div class="settings-row">
+      <span class="settings-label">字体大小</span>
+      <input type="range" id="fontScale" min="12" max="18" value="14" step="1" oninput="updateFontSize()">
+    </div>
+
+    <!-- P2: High contrast -->
+    <div class="settings-row">
+      <span class="settings-label">高对比度模式</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="highContrast" onchange="toggleHighContrast()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="section-divider"></div>
+    <div class="form-group-title">目标设置</div>
+    <div class="settings-row">
+      <span class="settings-label">每日饮水目标 (ml)</span>
+      <input type="number" id="settingsWaterGoal" value="2000" min="100" max="10000" step="100" onchange="updateSetting('waterGoal', this.value)">
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">每日阅读目标 (页)</span>
+      <input type="number" id="settingsReadGoal" value="30" min="1" max="200" step="5" onchange="updateSetting('readGoal', this.value)">
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">每周运动目标 (次)</span>
+      <input type="number" id="settingsExerciseWeeklyGoal" value="5" min="1" max="14" step="1" onchange="updateSetting('exercise_weekly_goal', Math.max(1, Math.min(14, parseInt(this.value)||5)))">
+    </div>
+    
+
+    <div class="section-divider"></div>
+    <div class="form-group-title">提醒设置</div>
+    <div id="nextReminderDisplay" class="text-xs color-secondary mb-2" style="font-weight:500;">下次提醒：计算中…</div>
+    <div class="settings-row">
+      <span class="settings-label">英语学习提醒时间</span>
+      <input type="time" id="settingsEnglishTime" value="20:00" onchange="updateSetting('englishTime', this.value)">
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">喝水提醒间隔 (分钟)</span>
+      <input type="number" id="settingsWaterInterval" value="60" min="10" max="180" step="10" onchange="updateSetting('waterInterval', this.value)">
+    </div>
+
+    <!-- P2: Hide entertainment modules -->
+    <div class="section-divider"></div>
+    <div class="form-group-title">模块开关</div>
+    <div class="settings-row">
+      <span class="settings-label">隐藏黄历板块</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="hideAlmanac" onchange="toggleHideAlmanac()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">隐藏星座运势</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="hideHoroscope" onchange="toggleHideHoroscope()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">隐藏文章板块</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="hideHotTopics" onchange="toggleHideHotTopics()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    
+
+    <div class="section-divider"></div>
+    <div class="form-group-title">数据管理</div>
+    <div class="mt-3">
+      <button class="btn btn-sm btn-outline" onclick="exportAllData()">导出全部数据（JSON）</button>
+      <button class="btn btn-sm btn-outline ml-1" onclick="document.getElementById('dataImportFile').click()">导入数据备份</button>
+      <input type="file" id="dataImportFile" accept=".json" onchange="handleImportFile(this)" style="display:none;">
+      <button class="btn btn-sm btn-outline ml-1" onclick="resetAllData()">重置所有数据</button>
+    </div>
+    <div class="mt-2 text-sm color-secondary">
+      JSON 备份只含文字与设置（待办、书籍、习惯、复盘等），<b>不含音乐文件</b>——
+      音乐存在浏览器 IndexedDB 里，换浏览器或清缓存后需要重新「导入音乐」。
+      清缓存前请先导出备份，音乐请另存原文件。
+    </div>
+    <div class="mt-3">
+      <button class="btn btn-sm btn-outline" onclick="exportMarkdownReport()">导出周报（Markdown）</button>
+      <button class="btn btn-sm btn-outline ml-1" onclick="exportTodosCSV()">导出待办（CSV）</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ==================== P3: MOBILE BOTTOM NAV ==================== -->
+<nav class="mobile-nav" id="mobileNav">
+  <div class="mobile-nav-item active" onclick="navigateTo('dashboard')"><span class="mni-icon">&#8865;</span>概览</div>
+  <div class="mobile-nav-item" onclick="navigateTo('todo')"><span class="mni-icon">&#9744;</span>待办</div>
+  <div class="mobile-nav-item" onclick="navigateTo('water')"><span class="mni-icon">&#128167;</span>喝水</div>
+  <div class="mobile-nav-item" onclick="navigateTo('review')"><span class="mni-icon">&#9678;</span>复盘</div>
+  <div class="mobile-nav-item" onclick="navigateTo('settings')"><span class="mni-icon">&#9881;</span>设置</div>
+</nav>
+
+<!-- ==================== MODAL (P0: stopPropagation fixed) ==================== -->
+<div class="modal-overlay" id="modalOverlay" style="display:none;">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<!-- ==================== TOAST ==================== -->
+<div id="toastContainer"></div>
+
+<div class="modal-overlay" id="userModal" style="display:none;" onclick="if(event.target===this)window.__up_close()">
+  <div class="modal-box" style="max-width:560px;" onclick="event.stopPropagation()">
+    <div id="userPanelContent"></div>
+  </div>
+</div>
+
+<!-- 启动兜底（脚本加载失败 / file:// 检测）已外链到 ./boot-guard.js，
+     并前移到 <head> 最前——内联 + 放在 body 末尾会让监听器注册晚于主 bundle，
+     脚本加载失败时告警条永远不出现。详见该文件顶部注释。 -->
+</body>
+</html>

@@ -1,0 +1,45 @@
+# pyproject.toml — project-hub 工程元数据与工具配置
+#
+# 注意：本服务运行时只用 Python 标准库，无需 pip install 任何依赖。
+# [project].version 必须与 hub/version.py 的 __version__ 保持一致；
+# CI（.github/workflows/ci.yml）会自动校验两者相等。
+
+[project]
+name = "project-hub"
+# ── 唯一版本源见 hub/version.py ── 改版本请两处一起改，CI 会拦下不一致
+version = "1.1.0"
+description = "单进程 Web 服务：把多个子项目以桌面形式集中呈现、运行、管理与托管"
+readme = "功能文档.md"
+requires-python = ">=3.11"
+# 枢纽本体零第三方依赖；列出空数组以便发布平台/IDE 识别。
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# 不打包源码（服务以源码方式直接 `python main.py` 运行），仅用于元数据/工具链识别。
+py-modules = ["main", "subapps", "browse_proxy", "backup", "start"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# 基础规则集。E 含 E722（裸 except）；新增 BLE 用于主动暴露计划 §1 提到的
+# 31 处宽泛异常——代码已用 `# noqa: BLE001` 标注，故纳入检查后既不会误报既有代码，
+# 也能防止后续新增盲捕异常（P3 #10 的里程碑：先「可见」，待收窄后再把 CI 升级为阻断）。
+select = ["E", "F", "W", "I", "UP", "BLE"]
+ignore = ["E501"]  # 长行交给 formatter 处理，不在此阻断
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = false

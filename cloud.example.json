@@ -1,0 +1,16 @@
+{
+  "_readme": [
+    "云端配置模板。复制为 cloud.json 后按需填写；cloud.json 已被 .gitignore 排除，切勿提交。",
+    "读取优先级：cloud.public.json → cloud.json（hub/accounts.py:190、hub/cloudauth.py:60）。",
+    "判定条件：endpoint 与 publishableKey 必须同时为非空字符串，缺任一即视为『未配置』——",
+    "此时云端账号副本同步与邮箱验证码会自动停用（健康检查里 cloud 显示 disabled），其余功能完全不受影响。",
+    "务必保留空的 \"\" 而不是占位文本（如 https://YOUR-ENDPOINT）：占位文本会被判为『已配置』，",
+    "请求打到不存在的域名上，报错会从『功能未启用』变成『服务暂时不可用』，更难排查。",
+    "可公开的 resourceId / endpoint / publishableKey 填在 cloud.public.json（已入库）；",
+    "hubSecret 是平台侧对接用的共享密钥，只填在本地 cloud.json 里。"
+  ],
+  "endpoint": "",
+  "oauthRelayBaseUrl": "",
+  "publishableKey": "",
+  "hubSecret": ""
+}

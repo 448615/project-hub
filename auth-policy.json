@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "_readme": [
+    "认证限流的唯一策略源。枢纽（hub/security.py）与星枢（starshu/src/lib/authPolicy.js）都读这一份，",
+    "改这里两端同时生效——这是消除『两套阈值各改各的』的唯一办法。",
+    "任一侧读取失败会回退到各自内置的默认值，两侧默认值必须与本文完全一致",
+    "（由 tests/test_auth_policy.py + starshu/tests/authPolicy.test.mjs 的跨语言一致性用例守着）。",
+    "字段：windowSec=统计窗口秒数；maxFails=窗口内允许的最大失败次数，超过即限流；",
+    "blockSec=超限后固定封禁秒数（0 表示封到窗口结束，不单独封禁）。"
+  ],
+  "loginAccount": {
+    "_purpose": "账号维度（按邮箱）。枢纽的 pair:/email: 桶与星枢的 login: 桶都用它。",
+    "windowSec": 600,
+    "maxFails": 6,
+    "blockSec": 300
+  },
+  "loginIpCoarse": {
+    "_purpose": "IP 维度（粗粒度）。仅星枢使用：星枢账号多、常在共享出口后面，按 6 次封 IP 会误伤整栋楼。",
+    "windowSec": 300,
+    "maxFails": 200,
+    "blockSec": 0
+  },
+  "register": {
+    "_purpose": "注册（按邮箱）。仅星枢有注册入口。",
+    "windowSec": 3600,
+    "maxFails": 5,
+    "blockSec": 0
+  }
+}

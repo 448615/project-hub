@@ -1,0 +1,173 @@
+/* 22-shell.css — 外壳体验：开始菜单、壁纸库、主题切换器、锁屏/开机画面、桌面便签、Alt+Tab 切换器。
+   由原 static/style.css 按功能连续切分而来，link 顺序即层叠顺序，勿随意调换。 */
+
+/* ===== 开始菜单（应用列表 + 搜索 + 电源） ===== */
+.start-menu {
+  position: fixed; left: 10px; bottom: 56px; z-index: 1000;
+  width: 320px; max-height: 70vh; display: flex; flex-direction: column;
+  /* 玻璃配方与窗口完全一致：底色取 --win-tint（三主题各有一套），浓度取 --glass-a × --win-k，
+     模糊/提亮接设置里的 --glass-blur / --glass-lift。
+     这样切主题、拖「窗口透明度」滑杆时菜单会跟着变，不再固定成一块白板。 */
+  background: linear-gradient(165deg,
+    rgba(var(--win-tint), calc(var(--glass-a) * var(--win-k))),
+    rgba(var(--win-tint2), var(--glass-a)));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) brightness(var(--glass-lift)) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) brightness(var(--glass-lift)) saturate(1.4);
+  border: 1px solid rgba(var(--bd-rgb), .28); border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(var(--sh-rgb), .26);
+  overflow: hidden; opacity: 0; transform: translateY(12px) scale(.98);
+  transform-origin: bottom left; transition: opacity .16s ease, transform .16s ease;
+}
+.start-menu[hidden] { display: none; }
+.start-menu.show { opacity: 1; transform: translateY(0) scale(1); }
+.sm-search { padding: 10px; border-bottom: 1px solid var(--border); }
+.sm-search-input {
+  width: 100%; padding: 8px 11px; border-radius: 9px; border: 1px solid var(--border);
+  /* 输入框底色跟主题走（--win-tint 在暗色主题下是深蓝，白底会突兀） */
+  background: rgba(var(--win-tint), .42); color: var(--text); font-size: 13px; outline: none;
+}
+.sm-search-input:focus { border-color: var(--accent); }
+.sm-apps { display: flex; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.sm-app-item { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; border: 1px solid transparent; border-radius: 10px; background: transparent; cursor: pointer; font-size: 11px; color: var(--text); }
+.sm-app-item span { font-size: 18px; }
+.sm-app-item:hover { background: rgba(var(--acc-rgb), .16); }
+.sm-list { padding: 6px; overflow-y: auto; flex: 1; }
+.sm-app { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.sm-app:hover { background: rgba(var(--acc-rgb), .16); }
+.sm-ic { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+/* 关键：ICON_MAP 里的图标是 128x128 原图，此处不约束尺寸就会按原始大小渲染、
+   撑爆 30px 格子并纵向溢出盖住相邻行的文字（开始菜单"图标挡住字"的根因）。
+   其余 iconHtml 使用点（桌面图标/窗口标题/任务栏/launcher）都已各自约束，勿漏新增容器。 */
+.sm-ic img { display: block; width: 26px; height: 26px; border-radius: 7px; }
+.sm-ic .ic { display: flex; align-items: center; justify-content: center; line-height: 1; }
+.sm-nm { font-size: 13px; color: var(--text); }
+.sm-empty { padding: 20px; text-align: center; color: var(--muted); font-size: 13px; }
+.sm-power { display: flex; border-top: 1px solid var(--border); }
+.sm-power-item { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px; font-size: 13px; cursor: pointer; color: var(--text); }
+.sm-power-item:hover { background: rgba(var(--acc-rgb), .16); }
+.sm-power-item .bi { font-size: 15px; }
+
+/* ===== 壁纸库缩略图 ===== */
+.wall-label { font-size: 13px; color: var(--muted); margin: 12px 2px 4px; }
+.wall-lib { display: flex; flex-wrap: wrap; gap: 8px; }
+.wall-thumb {
+  width: 72px; height: 46px; border-radius: 9px; border: 2px solid transparent;
+  background-size: cover; background-position: center; cursor: pointer;
+  position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(var(--sh-rgb), .18);
+}
+.wall-thumb:hover { border-color: rgba(var(--acc-rgb), .6); }
+.wall-thumb.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--acc-rgb), .4); }
+.wall-thumb .wt-nm {
+  position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .5)); padding: 6px 4px 2px; text-align: center;
+}
+
+/* ===================== 主题切换器（个性化窗口内） ===================== */
+.theme-picker { display: flex; gap: 10px; margin-top: 4px; }
+.theme-swat {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px 6px; border-radius: 12px; cursor: pointer;
+  border: 1.5px solid rgba(var(--bd-rgb), .35); background: rgba(255, 255, 255, .4);
+  transition: border-color .15s, transform .1s;
+}
+.theme-swat:hover { border-color: rgba(var(--acc-rgb), .6); transform: translateY(-1px); }
+.theme-swat.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--acc-rgb), .35); }
+.theme-swat .sw-chip { width: 40px; height: 40px; border-radius: 10px; }
+.theme-swat .sw-name { font-size: 11.5px; color: var(--text); }
+.sw-blue { background: linear-gradient(135deg, #5B8CFF, #67E8F9); }
+.sw-dark { background: linear-gradient(135deg, #1a2440, #0e1526); }
+.sw-pink { background: linear-gradient(135deg, #ff85ad, #ffbed6); }
+
+/* ===================== 锁屏 / 开机画面 ===================== */
+#lockscreen {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: var(--wallpaper, url('/static/bg.jpg')) center / cover no-repeat;
+  cursor: pointer; user-select: none;
+  animation: lsIn .6s ease;
+  transition: opacity .5s ease;
+}
+#lockscreen::before {
+  content: ""; position: absolute; inset: 0;
+  background: rgba(10, 18, 40, .30);
+  backdrop-filter: blur(7px) saturate(1.1);
+  -webkit-backdrop-filter: blur(7px) saturate(1.1);
+}
+#lockscreen * { position: relative; }
+#lockscreen.hide { opacity: 0; pointer-events: none; }
+@keyframes lsIn { from { opacity: 0; } to { opacity: 1; } }
+.lock-time { font-size: 86px; font-weight: 300; color: #fff; letter-spacing: 2px; text-shadow: 0 6px 30px rgba(0, 0, 0, .5); font-variant-numeric: tabular-nums; }
+.lock-date { font-size: 17px; color: rgba(255, 255, 255, .92); text-shadow: 0 2px 12px rgba(0, 0, 0, .45); letter-spacing: 1px; }
+.lock-hint {
+  margin-top: 26px; padding: 9px 22px; border-radius: 999px; font-size: 13.5px;
+  color: #fff; background: rgba(255, 255, 255, .16); border: 1px solid rgba(255, 255, 255, .35);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  animation: lsHint 2.2s ease infinite;
+}
+@keyframes lsHint { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+
+/* ===================== 桌面便签（多色便利贴，独立小窗） ===================== */
+.sticky {
+  position: fixed; width: 300px; height: 260px; min-height: 170px;
+  border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 14px 34px rgba(var(--sh-rgb), .28);
+  z-index: 40; animation: winIn .2s ease;
+  font-family: inherit;
+}
+.sticky .st-resize {
+  position: absolute; right: 0; bottom: 0; width: 18px; height: 18px;
+  cursor: nwse-resize; opacity: .55;
+  background: linear-gradient(135deg, transparent 0 50%, rgba(0,0,0,.35) 50% 60%, transparent 60% 74%, rgba(0,0,0,.35) 74% 84%, transparent 84%);
+}
+.sticky .st-resize:hover { opacity: .9; }
+.sticky .st-bar {
+  display: flex; align-items: center; gap: 6px; padding: 7px 10px; cursor: move; user-select: none;
+  background: rgba(0, 0, 0, .08);
+}
+.sticky .st-dots { display: flex; gap: 4px; flex: 1; }
+.sticky .st-dots i { width: 9px; height: 9px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0, 0, 0, .12); }
+.sticky .st-x { border: none; background: rgba(0, 0, 0, .1); color: rgba(0, 0, 0, .55); width: 20px; height: 20px; border-radius: 6px; cursor: pointer; font-size: 12px; line-height: 1; }
+.sticky .st-x:hover { background: rgba(0, 0, 0, .22); color: #fff; }
+.sticky textarea {
+  flex: 1; border: none; outline: none; resize: none; padding: 10px 12px;
+  font-size: 13px; line-height: 1.6; font-family: inherit; background: transparent; color: #333;
+}
+.sticky .st-foot { padding: 4px 10px; font-size: 10.5px; color: rgba(0, 0, 0, .5); display: flex; justify-content: space-between; }
+/* 便签配色 */
+.sticky.c-yellow { background: linear-gradient(175deg, #fff3b8, #ffe98a); }
+.sticky.c-pink   { background: linear-gradient(175deg, #ffd6e4, #ffb9cf); }
+.sticky.c-green  { background: linear-gradient(175deg, #d8f6d9, #b7ecc0); }
+.sticky.c-blue   { background: linear-gradient(175deg, #d9ecff, #b7d8ff); }
+
+/* ---- 便签：待办模式 ---- */
+.sticky .st-mode { border: none; background: rgba(0,0,0,.08); color: rgba(0,0,0,.6); width: 20px; height: 20px; border-radius: 6px; cursor: pointer; font-size: 11px; line-height: 1; margin-right: 4px; }
+.sticky .st-mode:hover { background: rgba(0,0,0,.2); color: #fff; }
+.sticky .st-save { border: none; background: rgba(0,0,0,.08); color: rgba(0,0,0,.6); width: 20px; height: 20px; border-radius: 6px; cursor: pointer; font-size: 11px; line-height: 1; margin-right: 4px; }
+.sticky .st-save:hover { background: rgba(0,0,0,.2); color: #fff; }
+.sticky .st-todo { flex: 1; display: flex; flex-direction: column; padding: 6px 10px 4px; gap: 6px; min-height: 120px; }
+.sticky .st-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+.sticky .st-todo-empty { font-size: 12px; color: rgba(0,0,0,.4); padding: 12px 4px; text-align: center; }
+.sticky .st-todo-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #333; }
+.sticky .st-todo-item input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; flex: none; }
+.sticky .st-todo-txt { flex: 1; word-break: break-all; }
+.sticky .st-todo-item.done .st-todo-txt { text-decoration: line-through; opacity: .5; }
+.sticky .st-todo-del { border: none; background: none; color: rgba(0,0,0,.35); width: 18px; height: 18px; border-radius: 5px; cursor: pointer; font-size: 10px; line-height: 1; flex: none; }
+.sticky .st-todo-del:hover { background: rgba(0,0,0,.15); color: #fff; }
+.sticky .st-add { display: flex; gap: 4px; border-top: 1px solid rgba(0,0,0,.08); padding-top: 6px; }
+.sticky .st-add-in { flex: 1; border: none; outline: none; background: rgba(255,255,255,.55); border-radius: 7px; padding: 4px 8px; font-size: 12px; font-family: inherit; color: #333; }
+.sticky .st-add-btn { border: none; background: var(--accent); color: #fff; width: 24px; height: 24px; border-radius: 7px; cursor: pointer; font-size: 14px; line-height: 1; }
+
+/* ---- Alt+Tab 窗口切换器 ---- */
+#alt-tab {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: flex; gap: 12px; padding: 18px 20px; z-index: 99999;
+  background: rgba(255,255,255,.74); backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px);
+  border: 1px solid rgba(255,255,255,.65); border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(40,70,140,.30);
+  animation: atIn .15s ease-out;
+}
+@keyframes atIn { from { opacity: 0; transform: translate(-50%,-50%) scale(.92); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+#alt-tab .at-item { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 9px; border-radius: 12px; border: 2px solid transparent; transition: border-color .12s, background .12s; }
+#alt-tab .at-item.active { border-color: var(--accent); background: rgba(255,255,255,.9); }
+#alt-tab .at-shot { position: relative; width: 180px; height: 120px; overflow: hidden; border-radius: 8px; background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.07); }
+#alt-tab .at-name { font-size: 12px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #333; }

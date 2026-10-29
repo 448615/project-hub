@@ -1,0 +1,27 @@
+# .editorconfig — 统一编辑器行为
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+# Python：4 空格缩进（与 PEP 8 一致）
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+# JS / JSON / YAML / CSS / HTML：2 空格缩进
+[*.{js,jsx,json,yml,yaml,css,html}]
+indent_size = 2
+
+# Markdown / 文档
+[*.md]
+trim_trailing_whitespace = false
+
+# Windows 批处理：与 .gitattributes 的 eol=crlf 保持一致，
+# 避免编辑器把 .bat 存成 LF（cmd.exe 解析 LF-only 的 if/goto/( ) 块有已知歧义）
+[*.{bat,cmd}]
+end_of_line = crlf

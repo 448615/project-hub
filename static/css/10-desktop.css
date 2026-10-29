@@ -1,0 +1,44 @@
+/* 10-desktop.css — 桌面：背景、桌面图标卡片、拖拽态与状态小点。
+   由原 static/style.css 按功能连续切分而来，link 顺序即层叠顺序，勿随意调换。 */
+
+/* ===================== 桌面 ===================== */
+#desktop {
+  position: fixed; inset: 0; bottom: 56px;  /* 底部留出任务栏高度 */
+  padding: 26px; overflow: hidden;
+}
+
+/* 桌面图标（玻璃小卡片，可自由拖动排序）
+   z-index 与 .folder-item / .trash-item 统一为 12：三者同一层级，谁在上只由落点决定，
+   不会出现"排序后回收站压住项目图标"的情况。拖动时统一抬到 60。
+
+   卡片尺寸由 JS 的 applyDensity() 写进这四个变量（密度：紧凑/适中/宽松），
+   网格步长 = 卡片 + 10 也在那边按同一组数字算。两边共用一份尺寸，才能保证
+   「同一个格子起点上，所有图标的图心落在同一条竖线上」。 */
+:root { --ic-w: 116px; --ic-h: 112px; --ic-img: 46px; --ic-fs: 12.5px; }
+
+.desk-icon {
+  position: absolute;
+  width: var(--ic-w); height: var(--ic-h);
+  z-index: 12;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 6px; border-radius: 14px; cursor: grab; text-align: center;
+  border: 1px solid transparent;
+  transition: background .15s, border-color .15s, transform .12s, box-shadow .15s, opacity .15s;
+  user-select: none;
+}
+.desk-icon:active { cursor: grabbing; }
+.desk-icon:hover { background: rgba(255, 255, 255, .48); border-color: rgba(var(--bd-rgb), .30); }
+.desk-icon.selected { background: rgba(var(--acc-rgb), .26); border-color: rgba(var(--acc-rgb), .55); }
+/* 拖起微抬：正在拖动的图标 */
+.desk-icon.dragging {
+  opacity: .8; transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 16px 30px rgba(var(--sh-rgb), .35);
+  z-index: 60;
+}
+.desk-icon .ic { font-size: 40px; line-height: 1; filter: drop-shadow(0 4px 8px rgba(var(--sh-rgb), .28)); }
+.desk-icon .ic img { display: block; width: var(--ic-img); height: var(--ic-img); border-radius: 11px; box-shadow: 0 4px 10px rgba(var(--sh-rgb), .25); }
+/* 图标名：浅色玻璃上用深蓝灰字，配白色文字晕保证压在插画上也清晰 */
+.desk-icon .nm { font-size: var(--ic-fs); color: var(--text); text-shadow: 0 1px 2px rgba(255, 255, 255, .9); line-height: 1.3; max-height: 32px; overflow: hidden; }
+/* 状态小点：贴在图标右上角，绿=运行中，灰=离线 */
+.desk-icon .sdot { position: absolute; top: 9px; right: 12px; width: 9px; height: 9px; border-radius: 50%; background: #aab6cf; }
+.desk-icon .sdot.on { background: var(--green); box-shadow: 0 0 8px rgba(34, 181, 115, .55); }

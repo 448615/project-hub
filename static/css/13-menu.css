@@ -1,0 +1,111 @@
+/* 13-menu.css — 浮层：桌面/窗口右键菜单、个性化小窗、右下角小日历。
+   由原 static/style.css 按功能连续切分而来，link 顺序即层叠顺序，勿随意调换。 */
+
+/* ===================== 桌面右键菜单（仿 Windows） ===================== */
+.ctxmenu {
+  position: fixed; z-index: 300; min-width: 196px;
+  /* 与 .win / #taskbar / .start-menu 同一套玻璃配方：改主题或拖动「窗口透明度」时同步变化 */
+  background: linear-gradient(165deg,
+    rgba(var(--win-tint), calc(var(--glass-a) * var(--win-k))),
+    rgba(var(--win-tint2), var(--glass-a)));
+  border: 1px solid rgba(var(--acc-rgb), .32);
+  border-radius: 12px; padding: 6px;
+  backdrop-filter: blur(var(--glass-blur)) brightness(var(--glass-lift)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) brightness(var(--glass-lift)) saturate(1.4);
+  box-shadow: 0 16px 44px rgba(var(--sh-rgb), .25), inset 0 1px 0 rgba(255, 255, 255, .30);
+  animation: ctxIn .12s ease;
+  user-select: none;
+}
+@keyframes ctxIn { from { opacity: 0; transform: scale(.96) translateY(4px); } to { opacity: 1; transform: none; } }
+.ctxmenu .cm-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; color: var(--text); white-space: nowrap;
+}
+.ctxmenu .cm-item:hover { background: rgba(var(--acc-rgb), .20); }
+.ctxmenu .cm-item .bi { width: 20px; text-align: center; font-size: 14px; flex: none; }
+/* 禁用项（如回收站条目「打开原位置」在原文件夹已被删时）：灰掉且不响应 hover */
+.ctxmenu .cm-item.dis { color: var(--muted); opacity: .55; cursor: default; }
+.ctxmenu .cm-item.dis:hover { background: transparent; }
+/* 破坏性操作（彻底删除）：hover 才变红，平时保持普通字色免得整张菜单花掉 */
+.ctxmenu .cm-item.dg:hover { background: #e0524d; color: #fff; }
+.ctxmenu .cm-sep { height: 1px; background: rgba(var(--bd-rgb), .20); margin: 5px 8px; }
+
+/* ===================== 个性化小窗（壁纸导入） ===================== */
+.win.personalize { width: 420px !important; }
+.wall-label { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+.wall-drop {
+  height: 150px; border: 2px dashed rgba(var(--acc-rgb), .45); border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, .35); cursor: pointer; overflow: hidden; position: relative;
+  transition: border-color .15s, background .15s;
+}
+.wall-drop:hover { border-color: rgba(var(--acc-rgb), .70); }
+.wall-drop.over { border-color: var(--accent2); background: rgba(var(--acc2-rgb), .12); }
+.wall-hint { color: var(--muted); font-size: 13px; line-height: 1.8; text-align: center; pointer-events: none; }
+.wall-prev { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+.wall-drop.has-img .wall-hint { display: none; }
+.wall-drop.has-img .wall-prev { display: block; }
+.wall-actions { display: flex; gap: 10px; margin-top: 12px; }
+.btn.ghost { background: var(--glass-panel); border-color: rgba(var(--bd-rgb), .28); }
+.btn.ghost:hover { background: rgba(var(--acc-rgb), .22); border-color: rgba(var(--acc-rgb), .45); }
+
+/* ===================== 右下角小日历（白色玻璃） ===================== */
+.cal {
+  position: fixed; z-index: 250; width: 300px;
+  background: linear-gradient(165deg, rgba(255, 255, 255, .64), rgba(255, 255, 255, .46));
+  border: 1px solid rgba(255, 255, 255, .70);
+  border-radius: 16px; padding: 14px;
+  backdrop-filter: blur(26px) saturate(1.6);
+  -webkit-backdrop-filter: blur(26px) saturate(1.6);
+  box-shadow: 0 20px 50px rgba(20, 40, 80, .35), inset 0 1px 0 rgba(255, 255, 255, .95);
+  animation: ctxIn .14s ease;
+  user-select: none;
+  color: #1c2436;
+}
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-title { font-size: 15px; font-weight: 700; color: #1c2436; }
+.cal-nav {
+  width: 28px; height: 28px; border-radius: 9px; border: 1px solid rgba(110, 140, 200, .35);
+  background: rgba(255, 255, 255, .65); color: #2a3a60; cursor: pointer; font-size: 16px; line-height: 1;
+  transition: background .12s, color .12s;
+}
+.cal-nav:hover { background: rgba(var(--acc-rgb), .80); border-color: rgba(var(--acc-rgb), .9); color: #fff; }
+.cal-nav:disabled { opacity: .38; cursor: default; }
+.cal-nav:disabled:hover { background: rgba(255, 255, 255, .65); border-color: rgba(110, 140, 200, .35); color: #2a3a60; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dow { font-size: 11.5px; color: #6b7a99; text-align: center; padding: 5px 0; font-weight: 600; }
+.cal-cell {
+  font-size: 13px; color: #22304c; text-align: center; padding: 8px 0; border-radius: 9px; cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.cal-cell:hover { background: rgba(var(--acc-rgb), .20); color: #1c2c5e; }
+.cal-cell.blank { cursor: default; }
+.cal-cell.today {
+  background: rgba(var(--acc-rgb), .90); color: #fff; font-weight: 700;
+  box-shadow: 0 3px 12px rgba(var(--acc-rgb), .55);
+}
+.cal-cell.fest { color: #e04f4f; font-weight: 600; }
+/* 点击日期后的信息栏：农历 + 节日/节气 */
+.cal-info {
+  margin-top: 10px; padding: 10px 12px; border-radius: 11px;
+  background: rgba(255, 255, 255, .55);
+  border: 1px solid rgba(110, 140, 200, .28);
+  font-size: 12.5px; color: #22304c; line-height: 1.7;
+  animation: ctxIn .12s ease;
+}
+.cal-info .ci-date { font-weight: 700; font-size: 13.5px; color: #16224a; }
+.cal-info .ci-lunar { color: #4a5876; margin-top: 2px; }
+.cal-info .ci-fests { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.cal-info .ci-fest {
+  background: rgba(var(--acc-rgb), .16); border: 1px solid rgba(var(--acc-rgb), .34);
+  color: #2a4d8f; padding: 1px 9px; border-radius: 999px; font-size: 11.5px;
+}
+.cal-info .ci-fest.fest-red { background: rgba(224, 79, 79, .14); border-color: rgba(224, 79, 79, .34); color: #b03a3a; }
+
+.empty { color: var(--muted); text-align: center; padding: 60px 0; font-size: 15px; }
+
+@media (max-width: 600px) {
+  #desktop { padding: 16px; }
+  .win { width: 94vw; }
+}

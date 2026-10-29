@@ -1,0 +1,458 @@
+/* 40-account.css — 账号体系：登录遮罩、用户芯片与角色分级、云端数据面板、账号数据面板（含浅色主题）。
+   由原 static/style.css 按功能连续切分而来，link 顺序即层叠顺序，勿随意调换。 */
+
+/* ===================== 账号体系：登录遮罩 / 用户芯片 / 角色分级 ===================== */
+/* 登录遮罩：覆盖全屏；z-index 高于锁屏与任务栏。
+   注意这里**刻意不画背景**：保持透明，让 body::before 那张桌面壁纸透上来。
+   好处是开屏与进入桌面后是同一张图、同一档模糊（设置→壁纸模糊 自动生效），
+   不必在 JS 里再抄一份壁纸地址，也就不会出现「换壁纸后开屏不跟」的问题。 */
+.login-veil {
+  position: fixed; inset: 0; z-index: 2147483646;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+}
+.login-veil[hidden] { display: none; }   /* 反制上面的 display:flex，使 hidden 属性真正生效（与 .start-menu[hidden] 等一致） */
+
+/* 可读性层：左上提亮 + 整体压暗的斜向渐变，让玻璃窗有「浮在画面上」的层次。
+   pointer-events:none 是关键——否则它会吃掉整屏点击，卡片与右下角访客按钮都点不到。
+   模糊取 12px 而不是 3px：背景里除了壁纸，还有任务栏和桌面图标，弱模糊时这些
+   半截 UI 会在卡片周围晃，视线一直被拉走；模糊到只剩色块才叫「背景」。 */
+.login-scrim {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(120% 85% at 18% 6%, rgba(255,255,255,.30), rgba(255,255,255,0) 62%),
+    linear-gradient(180deg, rgba(14,22,42,.26) 0%, rgba(10,16,32,.52) 100%);
+  backdrop-filter: blur(12px) saturate(118%);
+  -webkit-backdrop-filter: blur(12px) saturate(118%);
+}
+body[data-theme="dark"] .login-scrim {
+  background:
+    radial-gradient(120% 85% at 18% 6%, rgba(120,160,255,.16), rgba(0,0,0,0) 60%),
+    linear-gradient(180deg, rgba(4,8,18,.42) 0%, rgba(3,6,14,.66) 100%);
+}
+/* 玻璃登录窗：三层质感叠加——外层大投影（浮起）、1px 亮边（玻璃厚度）、顶部高光（反光）。
+   与桌面窗口 .win 用的是同一套参数思路，所以开屏和桌面观感是连续的。 */
+.login-card {
+  position: relative;
+  width: 352px; max-width: calc(100vw - 40px); padding: 34px 30px 22px; text-align: center;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .58);
+  border: 1px solid rgba(255, 255, 255, .62);
+  box-shadow:
+    0 28px 64px rgba(10, 20, 40, .30),
+    0 2px 8px rgba(10, 20, 40, .12),
+    inset 0 1px 0 rgba(255, 255, 255, .80);
+  backdrop-filter: blur(28px) saturate(175%);
+  -webkit-backdrop-filter: blur(28px) saturate(175%);
+  display: flex; flex-direction: column; gap: 12px;
+}
+body[data-theme="dark"] .login-card {
+  background: rgba(18, 26, 46, .60);
+  border-color: rgba(150, 180, 230, .20);
+  box-shadow:
+    0 28px 64px rgba(0, 0, 0, .58),
+    0 2px 8px rgba(0, 0, 0, .40),
+    inset 0 1px 0 rgba(255, 255, 255, .10);
+}
+/* 上沿一条渐隐高光：玻璃厚度的「边缘反光」，没有它整块会显得像塑料 */
+.login-card::before {
+  content: ""; position: absolute; left: 16px; right: 16px; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), transparent);
+}
+body[data-theme="dark"] .login-card::before {
+  background: linear-gradient(90deg, transparent, rgba(180,205,255,.35), transparent);
+}
+
+.login-brand { display: flex; flex-direction: column; gap: 5px; }
+.login-logo { font-size: 40px; line-height: 1; filter: drop-shadow(0 6px 12px rgba(20,40,80,.28)); }
+body[data-theme="dark"] .login-logo { filter: drop-shadow(0 6px 12px rgba(0,0,0,.55)); }
+.login-title { font-size: 21px; font-weight: 700; color: var(--text); letter-spacing: .6px; }
+.login-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+
+.login-input {
+  width: 100%; box-sizing: border-box; padding: 10px 13px; font-size: 14px;
+  border: 1px solid var(--border); border-radius: 11px; outline: none;
+  background: rgba(255,255,255,.75); color: var(--text);
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+body[data-theme="dark"] .login-input { background: rgba(255,255,255,.08); }
+/* 占位符单列一条：浏览器默认的 placeholder 是「主文字色 + 透明度」算出来的，
+   深色主题下会暗到看不清（尤其输入框本身也是深色），必须显式给一个够亮的灰 */
+.login-input::placeholder { color: rgba(30, 42, 63, .42); }
+body[data-theme="dark"] .login-input::placeholder { color: rgba(232, 237, 247, .48); }
+.login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--acc-rgb), .18); }
+/* 输入校验失败时由 JS 打 is-invalid（如邮箱格式错），把红框落在具体那个框上，
+   而不是只在下方飘一行红字——后者在三个输入框的表单里指认不清 */
+.login-input.is-invalid { border-color: #d4380d; box-shadow: 0 0 0 3px rgba(212,56,13,.14); }
+body[data-theme="dark"] .login-input.is-invalid { border-color: #ff8f7a; }
+
+/* 密码可见性切换：包一层定位容器，眼睛按钮压在输入框右侧内边距里 */
+.pwd-wrap { position: relative; display: flex; }
+.pwd-wrap .login-input { padding-right: 42px; }
+.pwd-eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; cursor: pointer; border-radius: 8px;
+  font-size: 14px; line-height: 1; opacity: .55;
+  transition: opacity .15s ease, background .15s ease;
+}
+.pwd-eye:hover { opacity: .9; background: rgba(var(--acc-rgb), .12); }
+.pwd-eye:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
+/* 已显示密码时换成「闭眼」，用两个字符而不是图标库（零依赖） */
+.pwd-eye[aria-pressed="true"] { opacity: .9; }
+.pwd-eye[aria-pressed="true"] span { text-decoration: line-through; }
+
+/* ---- 图形验证码：输入框 + 可点击的图 ----
+   SVG 自带 #f4f7fb 浅底，这里把按钮底色设成同一个值：换图的瞬间不会闪一下
+   白或黑，看起来像「图片刷新了」而不是「界面抖了一下」。
+   图固定 132×44，和后端 SVG_W/SVG_H 一致；改尺寸要两边一起改，否则会被拉伸。 */
+.cap-row { display: flex; gap: 8px; align-items: stretch; }
+.cap-input {
+  flex: 1 1 auto; min-width: 0;
+  letter-spacing: 4px; font-weight: 600; text-transform: uppercase;
+}
+.cap-input::placeholder { letter-spacing: normal; font-weight: 400; text-transform: none; }
+.cap-box {
+  flex: 0 0 auto; width: 132px; height: 44px; padding: 0;
+  border: 1px solid var(--border); border-radius: 11px; overflow: hidden;
+  background: #f4f7fb; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.cap-box:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(var(--sh-rgb), .16); }
+.cap-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cap-box[disabled] { cursor: progress; opacity: .65; transform: none; box-shadow: none; }
+.cap-box svg { display: block; width: 132px; height: 44px; }
+.cap-loading { font-size: 11.5px; color: #6b7a90; }
+/* 窄屏：卡片宽度只够 280px，验证码图压到 112px 才不至于把输入框挤成一条缝 */
+@media (max-width: 380px) {
+  .cap-box, .cap-box svg { width: 112px; }
+}
+
+/* 邮件验证码行：输入框 + 发送按钮。按钮宽度固定，倒计时文案变化时不跳动，
+   否则从「发送验证码」变成「59 秒后重发」会把输入框挤窄一下，看着像闪了一下。 */
+.code-row { display: flex; gap: 8px; align-items: stretch; }
+.code-row .login-input { flex: 1 1 auto; min-width: 0; letter-spacing: 2px; }
+.code-row .login-input::placeholder { letter-spacing: normal; }
+.code-btn {
+  flex: 0 0 auto; width: 104px; padding: 0 6px;
+  border: 1px solid var(--border); border-radius: 11px;
+  background: rgba(255,255,255,.6); color: var(--text);
+  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.code-btn:hover:not([disabled]) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(var(--sh-rgb), .16); }
+.code-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 冷却中看起来是「不可点」而不是「坏掉了」：降到 6 成透明度并保持正文颜色，
+   不用灰色渐变——那会让人以为按钮被禁用且没有下一步。 */
+.code-btn[disabled] { cursor: default; opacity: .55; transform: none; box-shadow: none; }
+@media (max-width: 380px) {
+  .code-btn { width: 92px; font-size: 12px; }
+}
+
+.login-btn {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 14px; font-size: 14px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 11px;
+  background: rgba(255,255,255,.6); color: var(--text);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.login-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(var(--sh-rgb), .16); }
+.login-btn:disabled { opacity: .62; cursor: not-allowed; transform: none; }
+.login-btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent; }
+.login-btn-primary:hover { filter: brightness(1.04); }
+/* loading：文字用 visibility 隐藏以保住按钮宽度（否则按钮会「缩水」抖动），
+   转圈用绝对定位叠在中间 */
+.login-btn.is-loading .btn-label { visibility: hidden; }
+.btn-spin { display: none; }
+.login-btn.is-loading .btn-spin {
+  display: block; position: absolute;
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.45); border-top-color: #fff;
+  animation: hm-login-spin .7s linear infinite;
+}
+.login-btn:not(.login-btn-primary).is-loading .btn-spin {
+  border-color: rgba(var(--acc-rgb), .3); border-top-color: var(--accent);
+}
+@keyframes hm-login-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .login-btn.is-loading .btn-spin { animation-duration: 2s; }
+}
+
+/* 提示区：按语义分色。原来只有一种红色，于是「正在登录…」「邮箱格式错」「网络错误」
+   视觉上完全一样，用户分不清哪句要他改、哪句只是进度。 */
+.login-msg {
+  min-height: 18px; font-size: 12.5px; color: #d4380d;
+  word-break: break-all; transition: color .15s ease;
+}
+.login-msg.is-error { color: #d4380d; }
+.login-msg.is-warn  { color: #b7791f; }
+.login-msg.is-info  { color: var(--accent); }
+.login-msg.is-ok    { color: #147a4c; }
+body[data-theme="dark"] .login-msg.is-error { color: #ff8f7a; }
+body[data-theme="dark"] .login-msg.is-warn  { color: #f0c070; }
+body[data-theme="dark"] .login-msg.is-ok    { color: #6ee7b7; }
+
+.login-tip { font-size: 11.5px; color: var(--muted); line-height: 1.7; border-top: 1px dashed var(--border); padding-top: 10px; }
+
+/* ===== 右下角「访客模式」入口 =====
+   放在卡片之外（绝对定位于遮罩），是因为它是一条**旁路**而非登录流程的一步；
+   放进卡片会和「登录/注册」抢同等视觉权重，反而诱导误点。 */
+.guest-enter {
+  position: absolute; right: 26px; bottom: 22px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 17px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  color: #fff; border-radius: 999px;
+  background: rgba(12, 20, 36, .34);
+  border: 1px solid rgba(255, 255, 255, .34);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  transition: transform .14s ease, background .14s ease, border-color .14s ease;
+}
+.guest-enter:hover { transform: translateY(-1px); background: rgba(12, 20, 36, .48); border-color: rgba(255, 255, 255, .55); }
+.guest-enter:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+.guest-enter-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #6ee7b7;
+  box-shadow: 0 0 8px rgba(110, 231, 183, .9);
+}
+/* 窄/矮视口：按钮居中到底部，避免压住卡片 */
+@media (max-width: 560px), (max-height: 640px) {
+  .guest-enter { right: 50%; transform: translateX(50%); bottom: 14px; }
+  .guest-enter:hover { transform: translateX(50%) translateY(-1px); }
+}
+
+/* ===== 访客视图（只读）=====
+   背景同样透出桌面壁纸：未登录用户看到的应该还是「这台机器的样子」，
+   而不是一个和桌面无关的白色页面。 */
+.guest-view {
+  position: fixed; inset: 0; z-index: 2147483645;
+  display: flex; flex-direction: column;
+  background: linear-gradient(180deg, rgba(10, 16, 32, .42) 0%, rgba(6, 10, 22, .66) 100%);
+  backdrop-filter: blur(12px) saturate(118%);
+  -webkit-backdrop-filter: blur(12px) saturate(118%);
+  color: #f2f6ff;
+}
+.guest-view[hidden] { display: none; }   /* 同上：反制 display:flex */
+.guest-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 15px 26px;
+  background: rgba(12, 18, 34, .34);
+  border-bottom: 1px solid rgba(255, 255, 255, .14);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+.guest-bar-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; }
+.guest-badge {
+  font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  background: rgba(110, 231, 183, .20); color: #a7f3d0;
+  border: 1px solid rgba(110, 231, 183, .35);
+}
+.guest-bar-actions { margin-left: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.guest-subtitle { font-size: 12px; color: rgba(238, 243, 255, .66); }
+.guest-login-btn {
+  padding: 8px 18px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  border: none; border-radius: 999px; color: #0b1220;
+  background: linear-gradient(135deg, #9dc0ff, #7fe6f5);
+  transition: filter .14s ease, transform .14s ease;
+}
+.guest-login-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.guest-login-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.guest-grid {
+  flex: 1; min-height: 0; overflow: auto;
+  padding: 26px; display: grid; gap: 16px;
+  /* 280px 是按「常见 6 个项目排成 4+2 而不是 5+1」定的：
+     232px 在 1440 宽下会挤出第 5 列，最后一行只剩一张孤零零的卡。 */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-content: start;
+}
+.guest-card {
+  text-align: left; cursor: pointer; padding: 18px 18px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .14);
+  border: 1px solid rgba(255, 255, 255, .22);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  color: #f2f6ff;
+  transition: transform .16s ease, background .16s ease, border-color .16s ease;
+}
+.guest-card:hover { transform: translateY(-2px); background: rgba(255, 255, 255, .22); border-color: rgba(255, 255, 255, .40); }
+.guest-card:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+.guest-card-icon { font-size: 26px; line-height: 1; }
+.guest-card-name { margin-top: 10px; font-size: 15px; font-weight: 700; }
+.guest-card-desc {
+  margin-top: 6px; font-size: 12.5px; line-height: 1.65;
+  color: rgba(238, 243, 255, .78); min-height: 2.6em;
+}
+.guest-card-tags { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.guest-tag {
+  font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, .16); color: rgba(240, 246, 255, .9);
+}
+.guest-empty {
+  grid-column: 1 / -1; text-align: center; padding: 46px 12px;
+  font-size: 13px; color: rgba(238, 243, 255, .7); line-height: 1.8;
+}
+.guest-foot {
+  padding: 10px 26px 16px; font-size: 11.5px;
+  color: rgba(238, 243, 255, .72);
+  border-top: 1px solid rgba(255, 255, 255, .10);
+}
+
+/* 登录 / 注册 双模式切换与表单 */
+.auth-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 11px; background: rgba(var(--acc-rgb), .1); }
+.auth-tab {
+  flex: 1; padding: 8px 0; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  border: none; border-radius: 8px; background: transparent; color: var(--muted);
+  transition: background .15s ease, color .15s ease;
+}
+.auth-tab.active { background: var(--glass-strong); color: var(--text); box-shadow: 0 1px 4px rgba(var(--sh-rgb), .12); }
+.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.auth-form[hidden] { display: none; }   /* 反制上面的 display:flex，使 hidden 真正生效 */
+.auth-row { display: flex; gap: 8px; align-items: stretch; }
+.auth-row .login-input { flex: 1; min-width: 0; }
+.auth-row .login-btn { flex: 0 0 auto; white-space: nowrap; }
+.auth-pwd { display: flex; flex-direction: column; gap: 12px; }
+.auth-pwd[hidden] { display: none; }
+.auth-switch { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.auth-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.auth-switch a:hover { text-decoration: underline; }
+.acct-val { font-weight: 600; color: var(--text); max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-pwd { font-family: ui-monospace, Menlo, Consolas, "Courier New", monospace; color: var(--muted); font-size: 13px; }
+.auth-switch-sep { color: var(--border); }
+
+/* 任务栏用户芯片：邮箱（超长省略）+ 角色徽标 + 退出 */
+.user-chip { display: flex; align-items: center; gap: 7px; padding: 3px 9px; border-radius: 9px;
+  background: rgba(255,255,255,.42); border: 1px solid var(--border); font-size: 12px; color: var(--text); }
+.user-email { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-role { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
+.user-role.admin { background: rgba(34,181,115,.16); color: #147a4c; }
+.user-role.user { background: rgba(var(--acc-rgb), .14); color: var(--accent); }
+.user-logout { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0 2px; }
+.user-chip[hidden] { display: none; }    /* 反制上面的 display:flex，未登录时不占位 */
+.user-logout:hover { color: #d4380d; }
+
+/* 角色分级：普通用户隐藏所有标记了 data-admin-only 的界面元素。
+   注意：这只是体验优化——真正的拦截在服务端（写接口一律 403）。 */
+body.role-user [data-admin-only] { display: none !important; }
+
+/* ===== 云端数据面板（面板骨架样式，账号数据面板 .acct-panel 复用） ===== */
+.data-panel-veil{
+  position:fixed; inset:0; z-index:120;
+  background:rgba(8,12,22,.55); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; padding:24px;
+}
+.data-panel{
+  width:min(720px,94vw); max-height:82vh; display:flex; flex-direction:column;
+  border-radius:18px; overflow:hidden;
+  background:rgba(22,30,52,.9); border:1px solid rgba(120,170,255,.3);
+  backdrop-filter:blur(22px) saturate(160%);
+  box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+  color:#e8eefc;
+}
+.data-panel-head{ display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,.08); }
+.data-panel-head b{ font-size:15px; }
+.data-panel-cloud{ font-size:12px; color:#8fb4ff; margin-left:auto; }
+.data-panel-close{ border:none; background:transparent; color:#c9d6f2; font-size:15px; cursor:pointer; padding:4px 8px; border-radius:8px; }
+.data-panel-close:hover{ background:rgba(255,255,255,.1); }
+.data-panel-add{ display:flex; gap:8px; padding:12px 18px; border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; }
+.data-input{ flex:1 1 160px; min-width:120px; padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.14); background:rgba(10,16,30,.6); color:#e8eefc; font-size:13px; outline:none; }
+.data-input:focus{ border-color:rgba(120,170,255,.6); }
+.data-btn{ padding:8px 18px; border-radius:10px; border:1px solid rgba(120,170,255,.5); background:rgba(80,130,255,.28); color:#eaf1ff; font-size:13px; font-weight:600; cursor:pointer; }
+.data-btn:hover{ background:rgba(80,130,255,.42); }
+.data-btn:disabled{ opacity:.5; cursor:default; }
+.data-panel-list{ padding:8px 12px 16px; overflow:auto; }
+.data-empty{ padding:26px 10px; text-align:center; color:#93a4c6; font-size:13px; }
+.data-row{ display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:12px; margin-top:8px; background:rgba(255,255,255,.04); }
+.data-row:hover{ background:rgba(255,255,255,.07); }
+.data-row-main{ flex:1; min-width:0; }
+.data-row-title{ font-size:13.5px; font-weight:600; color:#eef3ff; }
+.data-row-content{ font-size:12.5px; color:#b8c6e2; margin-top:2px; word-break:break-word; white-space:pre-wrap; }
+.data-row-time{ font-size:11px; color:#7f8fb3; margin-top:4px; }
+.data-del{ border:1px solid rgba(255,120,120,.35); background:rgba(255,90,90,.14); color:#ffb3b3; border-radius:8px; padding:5px 9px; cursor:pointer; font-size:13px; }
+.data-del:hover{ background:rgba(255,90,90,.28); }
+.data-del:disabled{ opacity:.5; cursor:default; }
+
+/* ===== 数据处理脚本 · 账号数据面板 ===== */
+.acct-panel{ width:min(940px,96vw); }
+.acct-toolbar{ display:flex; align-items:center; gap:8px; padding:10px 18px; border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; }
+.acct-tabs{ display:flex; gap:6px; margin-right:auto; background:rgba(10,16,30,.5); padding:3px; border-radius:10px; }
+.acct-tab{ border:none; background:transparent; color:#a9bade; font-size:12.5px; font-weight:600; padding:6px 14px; border-radius:8px; cursor:pointer; }
+.acct-tab.active{ background:rgba(80,130,255,.35); color:#eaf1ff; }
+.data-btn.ghost{ background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.16); color:#d8e2f7; font-weight:500; }
+.data-btn.ghost:hover{ background:rgba(255,255,255,.12); }
+.acct-table-wrap{ padding:6px 14px 12px; overflow:auto; flex:1; min-height:120px; }
+.acct-row{ display:grid; grid-template-columns:52px minmax(180px,1.6fr) minmax(90px,1fr) 74px minmax(110px,1fr) 168px;
+  align-items:center; gap:8px; padding:9px 10px; border-radius:10px; font-size:12.5px; color:#dbe4f7; }
+.acct-row + .acct-row{ margin-top:4px; background:rgba(255,255,255,.03); }
+.acct-row:not(.acct-head):hover{ background:rgba(255,255,255,.075); }
+.acct-head{ color:#8ea3c9; font-size:11.5px; letter-spacing:.04em; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,.08); border-radius:0; padding-bottom:6px; }
+.acct-me{ box-shadow:inset 3px 0 0 rgba(120,170,255,.7); }
+.acct-self{ font-style:normal; font-size:10.5px; color:#8fb4ff; border:1px solid rgba(120,170,255,.4); border-radius:6px; padding:0 4px; margin-left:4px; }
+.acct-row code{ font-family:ui-monospace,Consolas,monospace; font-size:12px; color:#9ff0c8; background:rgba(60,220,150,.1); padding:1px 6px; border-radius:6px; }
+.acct-mask{ color:#7f8fb3; letter-spacing:2px; }
+.acct-note{ color:#8a97b3; font-size:11.5px; }
+.role-admin{ color:#ffd479; }
+.role-user{ color:#9fb6dd; font-weight:500; }
+.c-act{ display:flex; gap:4px; justify-content:flex-end; flex-wrap:wrap; }
+.acct-op{ border:1px solid rgba(120,170,255,.35); background:rgba(80,130,255,.16); color:#cfe0ff; border-radius:7px; padding:3px 8px; font-size:11.5px; cursor:pointer; }
+.acct-op:hover{ background:rgba(80,130,255,.3); }
+.acct-op:disabled{ opacity:.45; cursor:default; }
+.acct-op.danger{ border-color:rgba(255,120,120,.35); background:rgba(255,90,90,.14); color:#ffb3b3; }
+.acct-op.danger:hover{ background:rgba(255,90,90,.28); }
+.acct-foot{ padding:9px 18px 12px; border-top:1px solid rgba(255,255,255,.06); font-size:11.5px; color:#8296ba; }
+
+/* ===== 账号数据面板 · 浅色（白）主题 =====
+   仅作用于 .acct-panel，不影响桌面上其他深色玻璃面板。
+   为什么单独做浅色：这张表是「核对账号密码」的阅读型界面，白底深字在长时间
+   逐行比对时对比度更高、更省眼；深色玻璃底反而让 12px 的等宽密码列发虚。 */
+.acct-panel{
+  background:linear-gradient(180deg,#ffffff 0%,#fbfcfe 100%);
+  border:1px solid rgba(15,23,42,.10);
+  box-shadow:0 24px 60px rgba(2,8,23,.35), 0 0 0 1px rgba(255,255,255,.6) inset;
+  color:#1f2937;
+  backdrop-filter:none;
+}
+.acct-panel .data-panel-head{ border-bottom:1px solid #eef1f6; }
+.acct-panel .data-panel-head b{ color:#0f172a; }
+.acct-panel .data-panel-cloud{ color:#2563eb; }
+.acct-panel .data-panel-close{ color:#64748b; }
+.acct-panel .data-panel-close:hover{ background:#eef2f8; color:#0f172a; }
+.acct-sec{
+  font-size:11px; font-weight:600; color:#047857; background:#ecfdf5;
+  border:1px solid #a7f3d0; border-radius:999px; padding:2px 8px; white-space:nowrap;
+}
+.acct-toolbar{ border-bottom:1px solid #eef1f6; }
+.acct-tabs{ background:#f1f4f9; }
+.acct-tab{ color:#64748b; }
+.acct-tab:hover{ color:#1f2937; }
+.acct-tab.active{ background:#ffffff; color:#1d4ed8; box-shadow:0 1px 2px rgba(15,23,42,.10); }
+.acct-panel .data-btn.ghost{
+  background:#ffffff; border-color:#d8e0ea; color:#374151; font-weight:500;
+}
+.acct-panel .data-btn.ghost:hover{ background:#f3f6fb; border-color:#c3ceda; }
+.acct-panel .data-btn.ghost:disabled{ background:#f8fafc; color:#9aa6b5; }
+.acct-row{ color:#1f2937; }
+.acct-row + .acct-row{ background:#f8fafc; }
+.acct-row:not(.acct-head):hover{ background:#eef4ff; }
+.acct-head{
+  color:#7b8794; font-size:11px; border-bottom:1px solid #e5eaf1; letter-spacing:.05em;
+}
+.acct-me{ box-shadow:inset 3px 0 0 #3b82f6; background:#eff6ff; }
+.acct-self{ color:#1d4ed8; border-color:#bfdbfe; background:#eff6ff; }
+.acct-row code{
+  color:#065f46; background:#ecfdf5; border:1px solid #cdf5e4;
+}
+.acct-mask{ color:#9aa6b5; }
+.acct-note{ color:#6b7280; }
+.role-admin{ color:#b45309; font-weight:600; }
+.role-user{ color:#475569; }
+.acct-op{
+  border:1px solid #c7ddff; background:#eff6ff; color:#1d4ed8; font-weight:500;
+}
+.acct-op:hover{ background:#dbeafe; }
+.acct-op.danger{ border-color:#fecaca; background:#fef2f2; color:#b91c1c; }
+.acct-op.danger:hover{ background:#fee2e2; }
+.acct-op:disabled{ background:#f3f4f6; color:#9ca3af; border-color:#e5e7eb; }
+.acct-foot{ border-top:1px solid #eef1f6; color:#6b7280; background:#fbfcfe; }
+.acct-panel .data-empty{ color:#94a3b8; }

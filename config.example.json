@@ -1,0 +1,78 @@
+{
+  "global": {
+    "title": "我的项目枢纽",
+    "subtitle": "子项目管理与一键启动中心"
+  },
+  "admins": [
+    "your-admin@example.com"
+  ],
+  "exclude": [
+    "node_modules",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    "__pycache__",
+    "cursors",
+    "browse",
+    "hub",
+    "tests"
+  ],
+  "projects": {
+    "demo-api": {
+      "display_name": "API 服务",
+      "icon": "🛠️",
+      "description": "基于 FastAPI 的后端接口服务（演示用）",
+      "tags": ["backend", "python"],
+      "port": 8081,
+      "run": "python demo-api/main.py",
+      "links": [
+        { "label": "接口文档", "url": "http://localhost:8081/docs" }
+      ],
+      "docs": "demo-api/README.md"
+    },
+    "demo-web": {
+      "display_name": "Web 前端",
+      "icon": "🎨",
+      "description": "React + Vite 前端应用",
+      "tags": ["frontend", "react"],
+      "port": 5173,
+      "run": "python demo-web/dev_server.py",
+      "links": [
+        { "label": "本地预览", "url": "http://localhost:5173" }
+      ],
+      "docs": "demo-web/README.md"
+    },
+    "demo-scripts": {
+      "display_name": "数据处理脚本",
+      "icon": "📊",
+      "description": "账号数据存储与报表（数据落在本项目内，云端同步）",
+      "tags": ["scripts", "data"],
+      "run": "python demo-scripts/run_all.py",
+      "panel": "accounts",
+      "docs": "demo-scripts/README.md"
+    },
+    "starshu": {
+      "display_name": "星枢",
+      "icon": "🌌",
+      "description": "内容运营中枢：登录认证 / RBAC 权限 / 内容工作流 / 定时发布 / 数据统计 / 媒体库",
+      "tags": ["cms", "node", "sqlite", "backend"],
+      "port": 3000,
+      "app": "/apps/starshu/",
+      "docs": "starshu/README.md",
+      "links": []
+    },
+    "workbench": {
+      "display_name": "桓梦工作台",
+      "icon": "🧭",
+      "description": "个人效率工作台：待办 / 便签 / 音乐 / 壁纸 / 实时资讯",
+      "tags": ["workbench", "frontend", "static"],
+      "app": "/apps/workbench/",
+      "docs": "workbench/README.md",
+      "links": []
+    }
+  },
+  "allowed_origins": [
+    "https://your-domain.example.com"
+  ]
+}

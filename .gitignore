@@ -84,3 +84,6 @@ cloud.local.json
 *.corrupt-*
 test-results/
 playwright-report/
+
+# 本地运行配置 config.json（含管理员邮箱；用 config.example.json 作模板）
+config.json

@@ -11,7 +11,12 @@
 //   退出 #logout（renderShell 顶栏）
 const { test, expect } = require('@playwright/test');
 
-const ADMIN = { email: 'admin@cms.local', password: 'Admin@123456' };
+// 测试账号对齐 src/shared/defaultAdmin.js：优先读环境变量，默认值仅用于本地 e2e 冒烟。
+// 这是开发种子账号（admin@cms.local 为本地假域名），不是生产凭据；真实部署后务必改密。
+const ADMIN = {
+  email: process.env.E2E_ADMIN_EMAIL || 'admin@cms.local',
+  password: process.env.E2E_ADMIN_PASSWORD || 'Admin@123456',
+};
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');

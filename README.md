@@ -113,7 +113,8 @@ node workbench/tests/storage-guard.test.mjs
 
 ## 已知项
 
-- `starshu/e2e/critical-path.spec.js` 里硬编码了明文测试口令，计划改为读 `process.env`。
+- `starshu/e2e/critical-path.spec.js` 的测试口令已改为读 `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`；
+  默认值仅用于本地 e2e 冒烟，是开发种子账号（非生产），真实部署后务必通过顶栏改密。
 - `config.json` 含管理员邮箱（同时也是提交身份），若将来把仓库推到公开远端需重新评估。
 - `starshu/.gitignore` 的 `data/` 没有前导斜杠锚定，会连带忽略 `starshu/` 下任意层级的
   `data/` 目录（例如 `workbench/www/data/articles.json` 若改由 starshu 提供就会漏提交）。

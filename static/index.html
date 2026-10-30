@@ -126,7 +126,7 @@
       </div>
 
       <!-- 模式切换：登录 / 注册 -->
-      <div class="auth-tabs">
+      <div id="authTabs" class="auth-tabs">
         <button id="tabLogin" class="auth-tab active" type="button">登录</button>
         <button id="tabRegister" class="auth-tab" type="button">注册</button>
       </div>
@@ -190,6 +190,44 @@
           <span class="btn-label">注册</span><span class="btn-spin" aria-hidden="true"></span>
         </button>
         <div class="auth-switch">已有账号？<a href="#" id="switchToLogin">去登录</a></div>
+      </form>
+
+      <!-- 找回密码：邮箱 → 图形码 → 邮件码 → 新密码
+           为什么必须有邮件码：图形码只能证明「这是人」，证明不了「这个邮箱是你的」。
+           少了邮件码这一步，任何知道你邮箱的人都能把密码改掉。 -->
+      <form id="resetForm" class="auth-form" hidden autocomplete="on">
+        <input id="resetEmail" class="login-input" type="email" placeholder="注册时用的邮箱" autocomplete="email" />
+        <div class="cap-row">
+          <input id="resetCaptcha" class="login-input cap-input" type="text" placeholder="图形验证码"
+                 autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 maxlength="4" aria-label="图形验证码" />
+          <button id="resetCaptchaBox" class="cap-box" type="button" title="看不清？点击换一张"
+                  aria-label="图形验证码，点击更换">
+            <span class="cap-loading">加载中…</span>
+          </button>
+        </div>
+        <div class="code-row">
+          <input id="resetCode" class="login-input" type="text" placeholder="邮件验证码"
+                 inputmode="numeric" autocomplete="one-time-code" spellcheck="false"
+                 maxlength="8" aria-label="邮件验证码" />
+          <button id="btnResetCode" class="code-btn" type="button">发送验证码</button>
+        </div>
+        <div class="pwd-wrap">
+          <input id="resetPassword" class="login-input" type="password" placeholder="新密码（≥6 位）" autocomplete="new-password" />
+          <button class="pwd-eye" type="button" data-eye="resetPassword" aria-label="显示密码" aria-pressed="false">
+            <span aria-hidden="true">👁</span>
+          </button>
+        </div>
+        <div class="pwd-wrap">
+          <input id="resetPassword2" class="login-input" type="password" placeholder="确认新密码" autocomplete="new-password" />
+          <button class="pwd-eye" type="button" data-eye="resetPassword2" aria-label="显示密码" aria-pressed="false">
+            <span aria-hidden="true">👁</span>
+          </button>
+        </div>
+        <button id="btnReset" class="login-btn login-btn-primary" type="submit">
+          <span class="btn-label">重设密码</span><span class="btn-spin" aria-hidden="true"></span>
+        </button>
+        <div class="auth-switch"><a href="#" id="switchToLoginFromReset">返回登录</a></div>
       </form>
 
       <div id="loginMsg" class="login-msg" role="status" aria-live="polite"></div>

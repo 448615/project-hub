@@ -22,8 +22,21 @@ const regCaptcha = document.getElementById('regCaptcha');
 const captchaBox = document.getElementById('captchaBox');
 const switchToRegister = document.getElementById('switchToRegister');
 const switchToLogin = document.getElementById('switchToLogin');
+// 找回密码（第三个模式）：字段与注册表单同构，但凭据方向相反——
+// 注册要求「邮箱还没注册」，找回要求「邮箱必须已注册」。
+const resetForm = document.getElementById('resetForm');
+const resetEmail = document.getElementById('resetEmail');
+const resetCaptcha = document.getElementById('resetCaptcha');
+const resetCaptchaBox = document.getElementById('resetCaptchaBox');
+const resetCode = document.getElementById('resetCode');
+const btnResetCode = document.getElementById('btnResetCode');
+const resetPassword = document.getElementById('resetPassword');
+const resetPassword2 = document.getElementById('resetPassword2');
+const btnReset = document.getElementById('btnReset');
+const authTabs = document.getElementById('authTabs');
+const switchToLoginFromReset = document.getElementById('switchToLoginFromReset');
 let _loginWired = false;
-let _authMode = 'login';   // 'login' | 'register'
+let _authMode = 'login';   // 'login' | 'register' | 'reset'
 
 const _EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -57,7 +70,8 @@ function markInvalid(el, bad) {
   else el.removeAttribute('aria-invalid');
 }
 function clearInvalid() {
-  [loginEmail, loginPassword, regEmail, regPassword, regPassword2, regCaptcha, regCode]
+  [loginEmail, loginPassword, regEmail, regPassword, regPassword2, regCaptcha, regCode,
+   resetEmail, resetPassword, resetPassword2, resetCaptcha, resetCode]
     .forEach((el) => markInvalid(el, false));
 }
 
@@ -66,35 +80,56 @@ function clearInvalid() {
 // 不是可选优化。_captchaToken 为空表示当前没有可用图（还没取 / 已用过）。
 let _captchaToken = '';
 let _captchaBusy = false;
+// 找回密码表单单独一张图、单独一个令牌。共用一个变量会串味：在注册页取了图再切到
+// 找回页，提交时带上去的是「这张图配的答案对不上」的令牌，用户怎么输都错。
+let _resetCaptchaToken = '';
+let _resetCaptchaBusy = false;
 
-async function refreshCaptcha() {
-  if (!captchaBox) return;
-  if (_captchaBusy) return;                 // 连点图片时只发一个请求
-  _captchaBusy = true;
-  _captchaToken = '';                       // 先作废旧令牌：取图失败时不能拿旧图提交
-  captchaBox.disabled = true;
-  captchaBox.innerHTML = '<span class="cap-loading">加载中…</span>';
-  try {
-    const r = await fetch(hubApiUrl('/api/captcha'), { credentials: 'same-origin' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json().catch(() => ({}));
-    const svg = (j && j.svg) || '';
-    // 只接受「以 <svg 开头、不含脚本/事件属性」的内容。这里的内容来自自家后端，
-    // 但把它塞进 innerHTML 之前做一次形状校验的成本几乎为零，能挡住
-    // 「后端被换成返回别的东西」这类离谱情况演变成 XSS。
-    if (!j || !j.ok || !j.token || svg.indexOf('<svg') !== 0
-        || svg.indexOf('<script') >= 0 || /\son[a-z]+\s*=/i.test(svg)) {
-      throw new Error('返回格式异常');
-    }
-    _captchaToken = j.token;
-    captchaBox.innerHTML = svg;
-  } catch (e) {
-    _captchaToken = '';
-    captchaBox.innerHTML = '<span class="cap-loading">点击重试</span>';
-  } finally {
-    _captchaBusy = false;
-    captchaBox.disabled = false;
+// 取一张图并校验形状。抽成独立函数是因为两个表单各要一张，逻辑完全一致。
+// 只接受「以 <svg 开头、不含脚本/事件属性」的内容：来源虽是自家后端，但把它塞进
+// innerHTML 之前做一次形状校验几乎零成本，能挡住「后端被换成返回别的东西」演变成 XSS。
+async function _fetchCaptchaSvg() {
+  const r = await fetch(hubApiUrl('/api/captcha'), { credentials: 'same-origin' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json().catch(() => ({}));
+  const svg = (j && j.svg) || '';
+  if (!j || !j.ok || !j.token || svg.indexOf('<svg') !== 0
+      || svg.indexOf('<script') >= 0 || /\son[a-z]+\s*=/i.test(svg)) {
+    throw new Error('返回格式异常');
   }
+  return { token: j.token, svg: svg };
+}
+
+// 把一张新图填进指定盒子；setToken 负责把令牌写回「这个表单自己那一份」
+async function _loadCaptchaInto(box, setToken) {
+  if (!box) return;
+  setToken('');
+  box.disabled = true;
+  box.innerHTML = '<span class="cap-loading">加载中…</span>';
+  try {
+    const c = await _fetchCaptchaSvg();
+    setToken(c.token);
+    box.innerHTML = c.svg;
+  } catch (e) {
+    setToken('');
+    box.innerHTML = '<span class="cap-loading">点击重试</span>';
+  } finally {
+    box.disabled = false;
+  }
+}
+
+function refreshCaptcha() {
+  if (!captchaBox || _captchaBusy) return;
+  _captchaBusy = true;
+  return _loadCaptchaInto(captchaBox, (t) => { _captchaToken = t; })
+    .finally(() => { _captchaBusy = false; });
+}
+
+function refreshResetCaptcha() {
+  if (!resetCaptchaBox || _resetCaptchaBusy) return;
+  _resetCaptchaBusy = true;
+  return _loadCaptchaInto(resetCaptchaBox, (t) => { _resetCaptchaToken = t; })
+    .finally(() => { _resetCaptchaBusy = false; });
 }
 
 // ---- 邮箱验证码 ----
@@ -206,15 +241,132 @@ async function sendRegisterCode() {
   if (regCode) { regCode.value = ''; regCode.focus(); }
 }
 
+// ---- 找回密码：发码 / 倒计时（与注册各用一份状态，互不干扰）----
+// 不共用 _emailVid 的原因很实际：用户可以先在注册页发一张码，再切到找回页发另一张，
+// 共用一个变量的话，后发的那张会把前一张的凭据顶掉，回到注册页提交就成了「码不匹配」。
+let _resetVid = '';
+let _resetSentEmail = '';
+let _resetTimer = 0;
+let _resetBusy = false;
+
+function stopResetTimer() {
+  if (_resetTimer) { clearInterval(_resetTimer); _resetTimer = 0; }
+  if (btnResetCode) {
+    btnResetCode.disabled = false;
+    btnResetCode.textContent = '发送验证码';
+  }
+}
+
+function startResetCooldown(sec) {
+  if (!btnResetCode) return;
+  let left = Math.max(1, Math.min(600, sec | 0));
+  btnResetCode.disabled = true;
+  btnResetCode.textContent = left + ' 秒后重发';
+  if (_resetTimer) clearInterval(_resetTimer);
+  _resetTimer = setInterval(() => {
+    left -= 1;
+    if (left <= 0) { stopResetTimer(); return; }
+    btnResetCode.textContent = left + ' 秒后重发';
+  }, 1000);
+}
+
+async function sendResetCode() {
+  if (_resetBusy) return;
+  const email = ((resetEmail && resetEmail.value) || '').trim();
+  const cap = ((resetCaptcha && resetCaptcha.value) || '').trim();
+  clearInvalid();
+  if (!_EMAIL_RE.test(email)) {
+    markInvalid(resetEmail, true);
+    if (resetEmail) resetEmail.focus();
+    setAuthMsg('请输入注册时用的邮箱地址', 'error');
+    return;
+  }
+  if (!cap) {
+    markInvalid(resetCaptcha, true);
+    if (resetCaptcha) resetCaptcha.focus();
+    setAuthMsg('请先输入图片中的验证码', 'error');
+    return;
+  }
+  if (!_resetCaptchaToken) {
+    setAuthMsg('图片验证码已失效，正在重新获取…', 'warn');
+    refreshResetCaptcha();
+    return;
+  }
+  _resetBusy = true;
+  btnResetCode.disabled = true;
+  btnResetCode.textContent = '发送中…';
+  setAuthMsg('正在发送验证码…', 'info');
+  let r, body;
+  try {
+    r = await fetch(hubApiUrl('/api/auth/reset-code'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ email: email, captchaId: _resetCaptchaToken, captcha: cap }),
+    });
+    const ctype = (r.headers.get('content-type') || '').toLowerCase();
+    if (ctype.indexOf('json') < 0) {
+      _resetBusy = false;
+      stopResetTimer();
+      setAuthMsg('请求被平台网关拦截（HTTP ' + r.status + '）：请用带 sharecode 的分享链接打开本应用后重试。', 'warn');
+      return;
+    }
+    body = await r.json().catch(() => ({}));
+  } catch (err) {
+    _resetBusy = false;
+    stopResetTimer();
+    setAuthMsg('网络错误：' + ((err && err.message) || err), 'error');
+    return;
+  }
+  _resetBusy = false;
+  if (!r.ok) {
+    // 图形码在服务端一旦被校验就作废（不管答案对错、也不管后面是否因为别的原因
+    // 被拒），所以除了「发得太频繁」这种情况，一律换一张新图——否则用户对着一张
+    // 已作废的图反复输，永远发不出去。
+    if (r.status !== 429) {
+      refreshResetCaptcha();
+      if (resetCaptcha) resetCaptcha.value = '';
+    }
+    if (body && body.captcha) markInvalid(resetCaptcha, true);
+    if (r.status === 429) {
+      const ra = parseInt(r.headers.get('retry-after') || '', 10);
+      if (ra > 0) startResetCooldown(ra); else stopResetTimer();
+      setAuthMsg(ra > 0 ? ('发送过于频繁，请在 ' + ra + ' 秒后再试')
+                        : ((body && body.error) || '发送过于频繁，请稍后再试'), 'warn');
+      return;
+    }
+    stopResetTimer();
+    if (r.status === 404) {
+      // 邮箱没注册：这不是「重发就好」的问题，直接指回注册
+      markInvalid(resetEmail, true);
+      setAuthMsg((body && body.error) || '该邮箱尚未注册，请先注册。', 'error');
+      return;
+    }
+    setAuthMsg((body && body.error) || '验证码发送失败，请稍后重试', 'error');
+    return;
+  }
+  _resetVid = (body && body.verificationId) || '';
+  _resetSentEmail = email;
+  startResetCooldown((body && body.cooldown) || 60);
+  refreshResetCaptcha();
+  if (resetCaptcha) resetCaptcha.value = '';
+  setAuthMsg('验证码已发送至 ' + email + '，请查收（含垃圾箱）', 'ok');
+  if (resetCode) { resetCode.value = ''; resetCode.focus(); }
+}
+
 // ---- 认证草稿：记住「当前模式 + 已填邮箱」----
 // 只存邮箱不存密码（密码不进 sessionStorage）。用途：意外刷新 / Service Worker 更新后
 // 仍停在原来的「注册」页并回填邮箱，而不是被弹回「登录」。
 const AUTH_DRAFT_KEY = 'hub_auth_draft';
 function saveAuthDraft() {
   try {
-    const el = (_authMode === 'login') ? loginEmail : regEmail;
+    // 「找回密码」不单独记：刷新后回到登录页（邮箱一并回填）比停在一个
+    // 「验证码已失效」的重置页更有用 —— 邮件码是绑在服务端某一张上的，页面重载后
+    // 表单里那个 id 多半已经过期，恢复它只会让用户提交时才失败。
+    const mode = (_authMode === 'register') ? 'register' : 'login';
+    const el = (mode === 'register') ? regEmail : (_authMode === 'reset' ? resetEmail : loginEmail);
     const email = (el && el.value) || '';
-    sessionStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify({ mode: _authMode, email: email }));
+    sessionStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify({ mode: mode, email: email }));
   } catch (e) { /* 隐私模式忽略 */ }
 }
 function loadAuthDraft() {
@@ -240,23 +392,34 @@ function authVeilVisible() {
 function resetForms(full) {
   setBusy(btnLogin, false);          // 顺带清掉 loading 转圈，避免请求被中断后按钮一直转
   setBusy(btnRegister, false);
+  setBusy(btnReset, false);
   clearInvalid();
   regPassword.value = '';
   regPassword2.value = '';
   if (regCaptcha) regCaptcha.value = '';
   if (regCode) regCode.value = '';
+  // 找回密码那几个框同样要清：新密码和确认密码是最不该残留在页面上的字段
+  if (resetPassword) resetPassword.value = '';
+  if (resetPassword2) resetPassword2.value = '';
+  if (resetCaptcha) resetCaptcha.value = '';
+  if (resetCode) resetCode.value = '';
   // 邮件验证码的待用凭据一并作废：表单都空了还要留着旧 id，会让「改了邮箱再提交」
   // 走到服务端才被拒，白跑一趟网络。
   _emailVid = '';
   _codeSentEmail = '';
+  _resetVid = '';
+  _resetSentEmail = '';
   stopSendTimer();
+  stopResetTimer();
   if (full) {
     // 重新打开遮罩：彻底清空（含邮箱/密码），避免上次账号残留
     if (loginForm) loginForm.reset();
     if (registerForm) registerForm.reset();
+    if (resetForm) resetForm.reset();
     loginEmail.value = '';
     loginPassword.value = '';
     regEmail.value = '';
+    if (resetEmail) resetEmail.value = '';
   }
 }
 
@@ -303,20 +466,28 @@ function hideLogin() {
   if (loginVeil) loginVeil.hidden = true;
 }
 
-// 切换登录 / 注册模式：显隐对应表单与标签高亮
+// 切换登录 / 注册 / 找回 三种模式：显隐对应表单与标签高亮
 function setAuthMode(mode) {
   _authMode = mode;
   const isLogin = mode === 'login';
+  const isReset = mode === 'reset';
   loginForm.hidden = !isLogin;
-  registerForm.hidden = isLogin;
+  registerForm.hidden = isLogin || isReset;
+  if (resetForm) resetForm.hidden = !isReset;
+  // 找回密码不对应任何一个标签页（它既不是登录也不是注册），两个标签都灰着反而
+  // 像点坏了，所以整排隐藏，只留「返回登录」这个出口。
+  if (authTabs) authTabs.hidden = isReset;
   tabLogin.classList.toggle('active', isLogin);
-  tabRegister.classList.toggle('active', !isLogin);
+  tabRegister.classList.toggle('active', mode === 'register');
   clearInvalid();
   setAuthMsg('', '');
-  if (isLogin) loginEmail.focus(); else regEmail.focus();
-  // 切到注册模式时确保有一张可用图。已有 token 就不重取——来回切标签页
+  if (isLogin) loginEmail.focus();
+  else if (isReset) { if (resetEmail) resetEmail.focus(); }
+  else regEmail.focus();
+  // 切到需要图形码的模式时确保有一张可用图。已有 token 就不重取——来回切标签页
   // 不该把用户刚认对的那张图刷掉（它还没被提交过，仍然有效）。
-  if (!isLogin && !_captchaToken) refreshCaptcha();
+  if (mode === 'register' && !_captchaToken) refreshCaptcha();
+  if (isReset && !_resetCaptchaToken) refreshResetCaptcha();
 }
 
 function wireLogin() {
@@ -392,15 +563,124 @@ function wireLogin() {
     enterApp();
   });
 
-  // —— 忘记密码：本地账号库没有邮件通道，自助找回不成立 ——
-  // 只陈述事实（找管理员重设）。原提示教用户「删掉 users.db 里的账号再重新注册」，
-  // 那是破坏性操作，不该作为登录页的默认引导。
+  // —— 忘记密码：切到找回表单 ——
+  // 这里以前写的是「本地账号库没有邮件通道，自助找回不成立」。那句话在接入真邮箱
+  // 验证码之后就不成立了，按旧提示走等于让用户白找管理员。
   if (forgotPwd) {
     forgotPwd.addEventListener('click', (e) => {
       e.preventDefault();
-      setAuthMsg('本地账号不支持邮件自助重置，请联系管理员重设密码。', 'warn');
+      const prefill = (loginEmail.value || '').trim();
+      setAuthMode('reset');
+      if (resetEmail && prefill) resetEmail.value = prefill;
+      saveAuthDraft();
     });
   }
+
+  // —— 找回密码：返回登录 ——
+  if (switchToLoginFromReset) {
+    switchToLoginFromReset.addEventListener('click', (e) => {
+      e.preventDefault();
+      setAuthMode('login');
+      saveAuthDraft();
+    });
+  }
+
+  // —— 找回密码：发码 / 换图 ——
+  if (btnResetCode) btnResetCode.addEventListener('click', () => sendResetCode());
+  if (resetCaptchaBox) resetCaptchaBox.addEventListener('click', () => refreshResetCaptcha());
+
+  // —— 找回密码：提交 ——
+  if (resetForm) {
+    resetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = (resetEmail.value || '').trim();
+      const pwd = resetPassword.value || '';
+      const pwd2 = resetPassword2.value || '';
+      const code = ((resetCode && resetCode.value) || '').trim();
+      clearInvalid();
+      if (!_EMAIL_RE.test(email)) {
+        markInvalid(resetEmail, true); resetEmail.focus();
+        setAuthMsg('请输入注册时用的邮箱地址', 'error'); return;
+      }
+      // 换过邮箱就必须重发：服务端记的是「这张码发给了谁」，不是输入框里的当前值。
+      // 先挡一次，省得用户填完密码才被拒。
+      if (!_resetVid || _resetSentEmail.toLowerCase() !== email.toLowerCase()) {
+        markInvalid(resetCode, true);
+        if (resetCode) resetCode.focus();
+        setAuthMsg('请先获取该邮箱的验证码', 'error'); return;
+      }
+      if (!/^\d{4,8}$/.test(code)) {
+        markInvalid(resetCode, true);
+        if (resetCode) resetCode.focus();
+        setAuthMsg('请输入邮件里的验证码', 'error'); return;
+      }
+      if (pwd.length < 6) {
+        markInvalid(resetPassword, true); resetPassword.focus();
+        setAuthMsg('密码至少 6 位', 'error'); return;
+      }
+      if (pwd !== pwd2) {
+        markInvalid(resetPassword2, true); resetPassword2.focus();
+        setAuthMsg('两次输入的密码不一致', 'error'); return;
+      }
+      setBusy(btnReset, true);
+      setAuthMsg('正在重设密码…', 'info');
+      let r, body;
+      try {
+        r = await fetch(hubApiUrl('/api/auth/reset'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ email: email, verificationId: _resetVid, code: code, password: pwd }),
+        });
+        const ctype = (r.headers.get('content-type') || '').toLowerCase();
+        if (ctype.indexOf('json') < 0) {
+          setBusy(btnReset, false);
+          setAuthMsg('请求被平台网关拦截（HTTP ' + r.status + '）：请用带 sharecode 的分享链接打开本应用后重试。', 'warn');
+          return;
+        }
+        body = await r.json().catch(() => ({}));
+      } catch (err) {
+        setBusy(btnReset, false);
+        setAuthMsg('网络错误：' + ((err && err.message) || err), 'error');
+        return;
+      }
+      setBusy(btnReset, false);
+      if (!r.ok) {
+        if (r.status === 429) {
+          const ra = parseInt(r.headers.get('retry-after') || '', 10);
+          setAuthMsg(ra > 0 ? ('请求过于频繁，请在 ' + ra + ' 秒后再试') : '请求过于频繁，请稍后再试', 'warn');
+          return;
+        }
+        // 邮件码错：只选中不清空。清空会连「刚输了什么」都看不到，而错码往往只是
+        // 记错一位；服务端允许同一张码试错 5 次，重输即可，不必重发。
+        if (body && body.emailCode) {
+          markInvalid(resetCode, true);
+          if (resetCode) { resetCode.focus(); resetCode.select(); }
+        }
+        setAuthMsg((body && body.error) || '重设失败，请稍后重试', 'error');
+        return;
+      }
+      // 成功：服务端已签发会话，直接进桌面，不用再拿刚设的密码登一次
+      setAuthMsg('', '');
+      _resetVid = '';
+      _resetSentEmail = '';
+      stopResetTimer();
+      hideLogin();
+      enterApp();
+      toast('密码已重设，已为你登录');
+    });
+  }
+
+  // 找回表单的回车流：邮箱 → 图形码 → 邮件码 → 新密码 → 确认 → 提交
+  if (resetEmail) resetEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (resetCaptcha) resetCaptcha.focus(); } });
+  if (resetCaptcha) resetCaptcha.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (_resetVid) { if (resetCode) resetCode.focus(); } else { sendResetCode(); }
+  });
+  if (resetCode) resetCode.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); resetPassword.focus(); } });
+  if (resetPassword) resetPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); resetPassword2.focus(); } });
+  if (resetPassword2) resetPassword2.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); btnReset.click(); } });
 
   // —— 注册：邮箱 + 邮件验证码 + 密码（首位注册用户自动成为管理员）——
   registerForm.addEventListener('submit', async (e) => {

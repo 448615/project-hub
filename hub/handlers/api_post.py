@@ -3,7 +3,8 @@
 分流顺序**不可调换**：
   1. 子应用托管（星枢的登录、建文章等）——必须最先，否则会落到枢纽的 /api 逻辑
   2. /browse/ 代理页的 AJAX 转发
-  3. 免登录闸门：/api/auth/login|register-code|register|logout（自带校验与限流）
+  3. 免登录闸门：/api/auth/login|register-code|register|reset-code|reset|logout
+     （自带校验与限流）
   4. 写接口统一闸门：已登录 + 管理员角色 + 同源校验
   5. 管理接口 → admin_post.py
   6. 项目 / 文件写操作 → project_post.py
@@ -58,6 +59,13 @@ class ApiPostMixin:
             return
         if path == "/api/auth/register":
             self._post_register()
+            return
+        # 找回密码：发码与重设分开，理由同注册（发信最贵，必须先证明是人）
+        if path == "/api/auth/reset-code":
+            self._post_reset_code()
+            return
+        if path == "/api/auth/reset":
+            self._post_reset()
             return
         if path == "/api/auth/logout":
             self._post_logout()

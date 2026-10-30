@@ -23,7 +23,14 @@ from ..security import (
     _mint_session_cookie,
     rate_hit,
 )
-from ..accounts import _cloud_create_account, _cloud_find_account, _create_user, _register_role, _role_for_email
+from ..accounts import (
+    _cloud_create_account,
+    _cloud_find_account,
+    _create_user,
+    _register_role,
+    _reset_password,
+    _role_for_email,
+)
 from ..captcha import verify_token
 from .. import cloudauth
 from .. import diag
@@ -260,6 +267,137 @@ class AuthPostMixin:
         sub = str(row[0]) if row else email
         cookie = _mint_session_cookie(email, sub, _is_https_request(self))
         print(f"[auth] 注册成功：{email}")
+        self._send_json_with_cookie({"ok": True, "email": email,
+                                     "role": _role_for_email(email), "cloud": self.cloud}, cookie)
+
+    def _post_reset_code(self):
+        """给「找回密码」发一封验证码邮件。
+
+        为什么不和注册发码共用一个接口：闸门方向相反。注册要求「这个邮箱还没注册」，
+        找回要求「这个邮箱必须已注册」。塞进一个函数就得问两次账号库，拒绝时也说不清
+        是哪条规则拦的，前端只能给一句含糊的失败提示。
+        """
+        body = self._read_body()
+        email = str(body.get("email") or "").strip().lower()
+        cap_token = str(body.get("captchaId") or body.get("captchaToken") or "")
+        cap_code = str(body.get("captcha") or body.get("captchaCode") or "")
+
+        if not cloudauth.configured():
+            self._send_json({"ok": False,
+                             "error": "当前环境未配置邮件服务，无法自助找回，请联系管理员重设密码。"},
+                            status=503)
+            return
+
+        # 三桶限流，与注册发码同构：IP 挡单点猛刷，email 挡换 IP 死盯一个地址，
+        # all 兜住「IP 可伪造」这件事（单机单用户，60 封/10 分钟远高于真人需求）。
+        _ip = self._client_ip()
+        _wait = max(rate_hit("rescode:ip:" + _ip, 12, 600.0),
+                    rate_hit("rescode:all", 60, 600.0),
+                    rate_hit("rescode:em:" + email, 3, 600.0))
+        if _wait > 0:
+            self._send_json({"ok": False,
+                             "error": f"验证码发送过于频繁，请 {int(_wait) + 1} 秒后再试。"},
+                            status=429,
+                            headers={"Retry-After": str(max(1, int(_wait)))})
+            return
+
+        if not email or not _EMAIL_RE.match(email):
+            self._send_json({"ok": False, "error": "请输入有效的邮箱地址。"}, status=400)
+            return
+
+        # 发信前先过图形码：发信是最贵、也是唯一会打扰到别人的动作
+        _cap_ok, _cap_why = verify_token(cap_token, cap_code)
+        if not _cap_ok:
+            self._send_json({"ok": False, "captcha": True,
+                             "error": _CAPTCHA_ERRORS.get(_cap_why, "验证码不正确，请重新输入。")},
+                            status=400)
+            return
+
+        # 账号必须存在，否则发出去的信没有意义。
+        # 这里直接说「尚未注册」不算新增泄露：注册发码接口本来就会回
+        # 「该邮箱已注册」，能探的早就探到了；反过来说，含糊其辞只会让用户
+        # 以为是系统坏了，反复重发邮件。
+        try:
+            _exists = _get_user_by_email(email) is not None
+        except Exception:  # noqa: BLE001
+            _exists = False
+        if not _exists:
+            try:
+                _exists = _cloud_find_account(email) is not None
+            except Exception:  # noqa: BLE001
+                _exists = False
+        if not _exists:
+            self._send_json({"ok": False, "error": "该邮箱尚未注册，请先注册。"}, status=404)
+            return
+
+        ok, vid, why, st = cloudauth.request_code(email)
+        if not ok:
+            self._send_json({"ok": False, "error": why}, status=st)
+            return
+        self._send_json({"ok": True, "verificationId": vid,
+                         "cooldown": int(cloudauth.SEND_COOLDOWN)})
+
+    def _post_reset(self):
+        """凭邮箱验证码重设密码，成功后直接登录。
+
+        这里**必须**是邮箱验证码，不能像注册那样在没配云服务时退回图形验证码：
+        图形码只证明「这是人」，证明不了「这个邮箱是你的」。若允许图形码改密，
+        任何知道你邮箱的人都能把密码改掉 —— 那不叫找回，叫接管。
+        所以云端不可用时的正确行为是明确拒绝，而不是降级放行。
+        """
+        body = self._read_body()
+        email = str(body.get("email") or "").strip().lower()
+        pwd = str(body.get("password") or "")
+        _vid = str(body.get("verificationId") or body.get("verification_id") or "")
+        _code = str(body.get("code") or body.get("emailCode") or "").strip()
+
+        # 免登录的写操作：双桶限流，与注册同量级
+        _ip = self._client_ip()
+        _wait = max(rate_hit("reset:ip:" + _ip, 10, 600.0),
+                    rate_hit("reset:all", 40, 600.0))
+        if _wait > 0:
+            self._send_json({"ok": False,
+                             "error": f"找回请求过于频繁，请 {int(_wait) + 1} 秒后再试。"},
+                            status=429,
+                            headers={"Retry-After": str(max(1, int(_wait)))})
+            return
+
+        # 格式与长度先校验：格式错不该白消耗一次验证码的试错次数
+        if not email or not _EMAIL_RE.match(email):
+            self._send_json({"ok": False, "error": "请输入有效的邮箱地址。"}, status=400)
+            return
+        if len(pwd) < 6:
+            self._send_json({"ok": False, "error": "密码至少 6 位。"}, status=400)
+            return
+
+        if not cloudauth.configured():
+            self._send_json({"ok": False,
+                             "error": "当前环境未配置邮件服务，无法自助找回，请联系管理员重设密码。"},
+                            status=503)
+            return
+
+        _ok, _why, _st = cloudauth.confirm_code(_vid, _code, email)
+        if not _ok:
+            self._send_json({"ok": False, "emailCode": True, "error": _why}, status=_st)
+            return
+
+        ok, err = _reset_password(email, pwd)
+        if not ok:
+            self._send_json({"ok": False, "error": err or "密码重设失败，请稍后重试。"}, status=400)
+            return
+
+        # 把登录失败计数清掉：用户刚才可能已经猜错过几次密码，既然已证明邮箱归属，
+        # 就不该让他重设完立刻被旧的封禁挡住。
+        for _k in _login_keys(_ip, email):
+            _login_note(_k, True)
+
+        try:
+            row = _get_user_by_email(email)
+        except Exception:  # noqa: BLE001
+            row = None
+        sub = str(row[0]) if row else email
+        cookie = _mint_session_cookie(email, sub, _is_https_request(self))
+        print(f"[auth] 密码已重设：{email}")
         self._send_json_with_cookie({"ok": True, "email": email,
                                      "role": _role_for_email(email), "cloud": self.cloud}, cookie)
 

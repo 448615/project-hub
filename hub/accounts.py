@@ -170,6 +170,44 @@ def _accounts_update(uid: int, fields: dict) -> tuple[bool, str]:
     return True, ""
 
 
+def _reset_password(email: str, new_pwd: str) -> tuple[bool, str]:
+    """按**邮箱**重设密码（找回账号用）。
+
+    为什么不复用上面的 _accounts_update：那个函数的入口是账号 id，而用户找回密码时
+    手里只有邮箱。更要紧的是 serverless 冷启动会把本地库清空 —— 这时本地根本没有
+    这条记录，只剩云端那份密文副本。只按 id 改的写法会在这里直接失败（"账号不存在"），
+    表现就是「验证码明明对了，却说我账号不存在」。所以顺序是：
+        本地有 → 直接改
+        本地没有但云端有 → 先按副本把账号落回本地（沿用原角色），再改
+    改完都排进云端同步队列，否则下次冷启动回查云端拿到的还是**旧密码**。
+    """
+    email = str(email or "").strip().lower()
+    if DS is None:
+        return False, "账号数据模块未加载。"
+    pwd = str(new_pwd or "")
+    if len(pwd) < 6:
+        return False, "密码至少 6 位。"
+
+    row = DS.get_by_email(email)
+    if not row:
+        cloud = _cloud_find_account(email)
+        if not cloud:
+            return False, "该邮箱尚未注册。"
+        # 角色从云端副本继承，否则管理员找回密码后会被降级成普通用户
+        DS.create(str(cloud.get("username") or email.split("@")[0]),
+                  email, pwd, role=str(cloud.get("role") or "user"))
+        row = DS.get_by_email(email)
+        if row:
+            _cloud_async("upsert", email)
+            return True, ""
+        return False, "账号库不可写，密码未能更新。"
+
+    if not DS.set_password(int(row["id"]), pwd):
+        return False, "密码更新失败（账号库不可写）。"
+    _cloud_async("upsert", email)
+    return True, ""
+
+
 # --------------------------------------------------------------------------
 # 服务端签名会话 Cookie（本地验签，永不回源）：
 # 登录成功后由本端用「仅服务端持有的会话子密钥」签发 HttpOnly 会话 Cookie，

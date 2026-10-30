@@ -301,6 +301,7 @@ body[data-theme="dark"] .login-msg.is-ok    { color: #6ee7b7; }
 
 /* 登录 / 注册 双模式切换与表单 */
 .auth-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 11px; background: rgba(var(--acc-rgb), .1); }
+.auth-tabs[hidden] { display: none; }   /* 反制上面的 display:flex：找回密码模式要把整排标签收起来 */
 .auth-tab {
   flex: 1; padding: 8px 0; font-size: 13.5px; font-weight: 600; cursor: pointer;
   border: none; border-radius: 8px; background: transparent; color: var(--muted);
